@@ -31,6 +31,7 @@ import numpy.testing as npt
 import array
 
 
+@spice.tempNaifContext
 def test_SpiceEllipse():
     spice.kclear()
     spice.reset()
@@ -47,6 +48,7 @@ def test_SpiceEllipse():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_SpicePlane():
     norm = [0.0, 0.0, 1.0]
     orig = [0.0, 0.0, 0.0]
@@ -56,6 +58,7 @@ def test_SpicePlane():
     assert str(plane).startswith("<SpicePlane")
 
 
+@spice.tempNaifContext
 def test_SpiceCell():
     testCell = stypes.SPICEINT_CELL(8)
     spice.appndi(1, testCell)
@@ -74,15 +77,18 @@ def test_SpiceCell():
     assert str(testCell).startswith("<SpiceCell")
 
 
+@spice.tempNaifContext
 def test_EmptySpiceCellSlicing():
     testCell = stypes.SPICEDOUBLE_CELL(1)
     assert testCell[0:1] == []
 
+@spice.tempNaifContext
 def test_numpy_and_strings():
     s = np.array(['3/0597205898.09324'])[0]
     sc = stypes.stringToCharP(s)
     assert stypes.toPythonString(sc)
 
+@spice.tempNaifContext
 def test_SpiceCellSliceInts():
     testVals = [1, 2, 3]
     testCell = stypes.SPICEINT_CELL(5)
@@ -106,6 +112,7 @@ def test_SpiceCellSliceInts():
     assert testCell[2:-1] == testVals[2:-1]
 
 
+@spice.tempNaifContext
 def test_toDoubleVector():
     madeFromList = stypes.toDoubleVector([1.0, 2.0, 3.0])
     assert len(madeFromList) == 3
@@ -124,6 +131,7 @@ def test_toDoubleVector():
         stypes.toDoubleVector(array.array('i', [1, 2, 3]))
 
 
+@spice.tempNaifContext
 def test_toIntVector():
     madeFromList = stypes.toIntVector([1, 2, 3])
     assert len(madeFromList) == 3
@@ -142,6 +150,7 @@ def test_toIntVector():
         stypes.toIntVector(array.array('d', [1.0, 2.0, 3.0]))
 
 
+@spice.tempNaifContext
 def test_toDoubleMatrix():
     madeFromList = stypes.toDoubleMatrix([[1.0, 2.0], [3.0, 4.0]])
     assert len(madeFromList) == 2
@@ -155,6 +164,7 @@ def test_toDoubleMatrix():
         stypes.toDoubleMatrix("ABCD")
 
 
+@spice.tempNaifContext
 def test_toIntMatrix():
     madeFromList = stypes.toIntMatrix([[1, 2], [3, 4]])
     assert len(madeFromList) == 2
@@ -170,6 +180,7 @@ def test_toIntMatrix():
         stypes.toIntMatrix([[1.0, 2.0], [3.0, 4.0]])
 
 
+@spice.tempNaifContext
 def test_to_improve_coverage():
     # SpiceyError().__str__()
     xsept = spice.stypes.SpiceyError('abc')
@@ -211,12 +222,14 @@ def test_to_improve_coverage():
     assert stscb.reset() is None
 
 
+@spice.tempNaifContext
 def test_Cell_Double_empty():
     cell = stypes.Cell_Double(1)
     assert isinstance(cell, stypes.Cell_Double)
     assert isinstance(cell, stypes.SpiceCell)
     assert cell[0:1] == []
 
+@spice.tempNaifContext
 def test_Cell_Double():
     cell = stypes.Cell_Double(8)
     spice.appndd(1.1, cell)
@@ -224,12 +237,14 @@ def test_Cell_Double():
     spice.appndd(3.3, cell)
     assert [x for x in cell] == [1.1,2.2,3.3]
 
+@spice.tempNaifContext
 def test_Cell_Int_empty():
     cell = stypes.Cell_Int(1)
     assert isinstance(cell, stypes.Cell_Int)
     assert isinstance(cell, stypes.SpiceCell)
     assert cell[0:1] == []
 
+@spice.tempNaifContext
 def test_Cell_Int():
     cell = stypes.Cell_Int(8)
     spice.appndi(1, cell)
@@ -237,6 +252,7 @@ def test_Cell_Int():
     spice.appndi(3, cell)
     assert [x for x in cell] == [1,2,3]
 
+@spice.tempNaifContext
 def test_Cell_Char():
     testCell = stypes.Cell_Char(10,10)
     spice.appndc("one", testCell)
@@ -246,6 +262,7 @@ def test_Cell_Char():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_cell_equality():
     cell = stypes.Cell_Int(8)
     assert cell == []

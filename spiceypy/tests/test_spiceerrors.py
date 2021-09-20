@@ -27,6 +27,7 @@ import spiceypy as spice
 from spiceypy.tests.gettestkernels import cwd
 import os
 
+@spice.tempNaifContext
 def test_geterror():
     spice.setmsg("some error occured")
     spice.sigerr("error")
@@ -36,24 +37,28 @@ def test_geterror():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_getSpiceyException():
     with pytest.raises(spice.stypes.SpiceyError):
         spice.furnsh(os.path.join(cwd, "_null_kernel.txt"))
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_emptyKernelPoolException():
     with pytest.raises(spice.stypes.SpiceyError):
         spice.ckgp(0, 0, 0, "blah")
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_foundErrorChecker():
     with pytest.raises(spice.stypes.SpiceyError):
         spice.bodc2n(-9991)
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_disable_found_catch():
     spice.kclear()
     with spice.no_found_check():
@@ -69,6 +74,7 @@ def test_disable_found_catch():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_recursive_disable_found_catch():
     spice.kclear()
     assert spice.config.catch_false_founds
@@ -91,6 +97,7 @@ def test_recursive_disable_found_catch():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_found_check():
     spice.kclear()
     spice.found_check_off()
@@ -106,6 +113,7 @@ def test_found_check():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_multiple_founds():
     success = spice.stypes.SpiceyError(value="test", found=(True, True))
     assert all(success.found)

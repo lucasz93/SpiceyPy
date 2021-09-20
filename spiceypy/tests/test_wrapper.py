@@ -43,6 +43,7 @@ def setup_module(module):
     downloadKernels()
 
 
+@spice.tempNaifContext
 def test_appndc():
     testCell = spice.cell_char(10, 10)
     spice.appndc("one", testCell)
@@ -52,6 +53,7 @@ def test_appndc():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_appndc2():
     testCell = spice.Cell_Char(10, 10)
     spice.appndc("one", testCell)
@@ -61,6 +63,7 @@ def test_appndc2():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_appndc_vectorized():
     testCell = spice.cell_char(10, 10)
     spice.appndc(["one", "two", "three"], testCell)
@@ -68,11 +71,13 @@ def test_appndc_vectorized():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_appndc_numpy():
     testCell = spice.cell_char(10, 10)
     spice.appndc(np.array(["one", "two"])[0], testCell)
     assert testCell[0] == "one"
 
+@spice.tempNaifContext
 def test_appndc_vectorized_numpy():
     testCell = spice.cell_char(10, 10)
     spice.appndc(np.array(["one", "two", "three"]), testCell)
@@ -80,6 +85,7 @@ def test_appndc_vectorized_numpy():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_appndc_vectorized_pandas():
     testCell = spice.cell_char(10, 10)
     spice.appndc(pd.Series(["one", "two", "three"]), testCell)
@@ -87,6 +93,7 @@ def test_appndc_vectorized_pandas():
     assert testCell[1] == "two"
     assert testCell[2] == "three"
 
+@spice.tempNaifContext
 def test_appndd():
     testCell = spice.cell_double(8)
     spice.appndd(1.0, testCell)
@@ -95,12 +102,14 @@ def test_appndd():
     assert [x for x in testCell] == [1.0, 2.0, 3.0]
 
 
+@spice.tempNaifContext
 def test_appndd_vectorized():
     testCell = spice.cell_double(8)
     spice.appndd([1.0, 2.0, 3.0], testCell)
     assert [x for x in testCell] == [1.0, 2.0, 3.0]
 
 
+@spice.tempNaifContext
 def test_appndi():
     testCell = spice.cell_int(8)
     spice.appndi(1, testCell)
@@ -109,12 +118,14 @@ def test_appndi():
     assert [x for x in testCell] == [1, 2, 3]
 
 
+@spice.tempNaifContext
 def test_appndi_vectorized():
     testCell = spice.cell_int(8)
     spice.appndi([1, 2, 3], testCell)
     assert [x for x in testCell] == [1, 2, 3]
 
 
+@spice.tempNaifContext
 def test_axisar():
     axis = np.array([0.0, 0.0, 1.0])
     outmatrix = spice.axisar(axis, spice.halfpi())
@@ -126,14 +137,17 @@ def test_axisar():
     np.testing.assert_array_almost_equal(expected, outmatrix, decimal=6)
 
 
+@spice.tempNaifContext
 def test_b1900():
     assert spice.b1900() == 2415020.31352
 
 
+@spice.tempNaifContext
 def test_b1950():
     assert spice.b1950() == 2433282.42345905
 
 
+@spice.tempNaifContext
 def test_badkpv():
     spice.kclear()
     spice.pdpool('DTEST_VAL', [3.1415, 186.0, 282.397])
@@ -143,11 +157,13 @@ def test_badkpv():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bltfrm():
     outCell = spice.bltfrm(-1)
     assert outCell.size >= 126
 
 
+@spice.tempNaifContext
 def test_bodc2n():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -156,6 +172,7 @@ def test_bodc2n():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodc2s():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -164,6 +181,7 @@ def test_bodc2s():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_boddef():
     spice.kclear()
     spice.boddef("Jebediah", 117)
@@ -171,6 +189,7 @@ def test_boddef():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodfnd():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -178,6 +197,7 @@ def test_bodfnd():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodn2c():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -187,6 +207,7 @@ def test_bodn2c():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bods2c():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -196,6 +217,7 @@ def test_bods2c():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodvar():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -205,6 +227,7 @@ def test_bodvar():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodvcd():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -215,6 +238,7 @@ def test_bodvcd():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_bodvrd():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -225,6 +249,7 @@ def test_bodvrd():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_brcktd():
     assert spice.brcktd(-1.0, 1.0, 10.0) == 1.0
     assert spice.brcktd(29.0, 1.0, 10.0) == 10.0
@@ -232,6 +257,7 @@ def test_brcktd():
     assert spice.brcktd(3.0, -10.0, -1.0) == -1.0
 
 
+@spice.tempNaifContext
 def test_brckti():
     assert spice.brckti(-1, 1, 10) == 1
     assert spice.brckti(29, 1, 10) == 10
@@ -239,6 +265,7 @@ def test_brckti():
     assert spice.brckti(3, -10, -1) == -1
 
 
+@spice.tempNaifContext
 def test_bschoc():
     array = ["FEYNMAN", "BOHR", "EINSTEIN", "NEWTON", "GALILEO"]
     order = [1, 2, 0, 4, 3]
@@ -250,6 +277,7 @@ def test_bschoc():
     assert spice.bschoc("BETHE", 5, lenvals, array, order) == -1
 
 
+@spice.tempNaifContext
 def test_bschoc_numpy():
     array = np.array(["FEYNMAN", "BOHR", "EINSTEIN", "NEWTON", "GALILEO"])
     order = [1, 2, 0, 4, 3]
@@ -263,6 +291,7 @@ def test_bschoc_numpy():
     assert spice.bschoc(np.array(["nan", "_"])[0], 5, lenvals, array, order) == -1
 
 
+@spice.tempNaifContext
 def test_bschoi():
     array = [100, 1, 10, 10000, 1000]
     order = [1, 2, 0, 4, 3]
@@ -273,6 +302,7 @@ def test_bschoi():
     assert spice.bschoi(17, 5, array, order) == -1
 
 
+@spice.tempNaifContext
 def test_bsrchc():
     array = ["BOHR", "EINSTEIN", "FEYNMAN", "GALILEO", "NEWTON"]
     lenvals = 10
@@ -283,6 +313,7 @@ def test_bsrchc():
     assert spice.bsrchc("BETHE", 5, lenvals, array) == -1
 
 
+@spice.tempNaifContext
 def test_bsrchd():
     array = np.array([-11.0, 0.0, 22.0, 750.0])
     assert spice.bsrchd(-11.0, 4, array) == 0
@@ -290,6 +321,7 @@ def test_bsrchd():
     assert spice.bsrchd(751.0, 4, array) == -1
 
 
+@spice.tempNaifContext
 def test_bsrchi():
     array = np.array([-11, 0, 22, 750])
     assert spice.bsrchi(-11, 4, array) == 0
@@ -297,6 +329,7 @@ def test_bsrchi():
     assert spice.bsrchi(751, 4, array) == -1
 
 
+@spice.tempNaifContext
 def test_card():
     testCell = spice.cell_double(8)
     assert spice.card(testCell) == 0
@@ -308,6 +341,7 @@ def test_card():
     assert spice.card(testCell) == 3
 
 
+@spice.tempNaifContext
 def test_ccifrm():
     frcode, frname, center = spice.ccifrm(2, 3000)
     assert frname == "ITRF93"
@@ -315,6 +349,7 @@ def test_ccifrm():
     assert center == 399
 
 
+@spice.tempNaifContext
 def test_cgv2el():
     vec1 = [1.0, 1.0, 1.0]
     vec2 = [1.0, -1.0, 1.0]
@@ -328,6 +363,7 @@ def test_cgv2el():
     npt.assert_array_almost_equal(expectedSminor, ellipse.semi_minor)
 
 
+@spice.tempNaifContext
 def test_chbder():
     cp = [ 1., 3., 0.5, 1., 0.5, -1., 1.]
     x2s = [0.5, 3.0]
@@ -335,6 +371,7 @@ def test_chbder():
     npt.assert_array_almost_equal([-0.340878, 0.382716, 4.288066, -1.514403], dpdxs)
 
 
+@spice.tempNaifContext
 def test_chkin():
     spice.reset()
     assert spice.trcdep() == 0
@@ -349,6 +386,7 @@ def test_chkin():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_chkout():
     spice.reset()
     assert spice.trcdep() == 0
@@ -363,6 +401,7 @@ def test_chkout():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_cidfrm():
     frcode, frname = spice.cidfrm(501)
     assert frcode == 10023
@@ -375,6 +414,7 @@ def test_cidfrm():
     assert frname == 'IAU_MOON'
 
 
+@spice.tempNaifContext
 def test_ckcls():
     # Spice crashes if ckcls detects nothing written to ck1
     spice.kclear()
@@ -395,6 +435,7 @@ def test_ckcls():
     assert not spice.exists(CK1)
 
 
+@spice.tempNaifContext
 def test_ckcov():
     spice.kclear()
     spice.furnsh(CassiniKernels.cassSclk)
@@ -406,6 +447,7 @@ def test_ckcov():
     assert [[cover[i*2],cover[i*2+1]] for i in range(spice.wncard(cover))] == expected_intervals
     spice.kclear()
 
+@spice.tempNaifContext
 def test_ckfrot():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -425,6 +467,7 @@ def test_ckfrot():
     assert ref == 1 
     spice.kclear()
 
+@spice.tempNaifContext
 def test_ckgp():
     spice.kclear()
     spice.reset()
@@ -446,6 +489,7 @@ def test_ckgp():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ckgpav():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -467,6 +511,7 @@ def test_ckgpav():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_cklpf():
     spice.kclear()
     spice.reset()
@@ -491,6 +536,7 @@ def test_cklpf():
     assert not spice.exists(CKLPF)
 
 
+@spice.tempNaifContext
 def test_ckobj():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -500,6 +546,7 @@ def test_ckobj():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ckopn():
     # Spice crashes if ckcls detects nothing written to ck1
     spice.kclear()
@@ -520,6 +567,7 @@ def test_ckopn():
     assert not spice.exists(CK1)
 
 
+@spice.tempNaifContext
 def test_ckupf():
     spice.kclear()
     spice.reset()
@@ -530,6 +578,7 @@ def test_ckupf():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ckw01():
     spice.kclear()
     CK1 = os.path.join(cwd, "type1.bc")
@@ -573,6 +622,7 @@ def test_ckw01():
         os.remove(CK1) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ckw02():
     spice.kclear()
     CK2 = os.path.join(cwd, "type2.bc")
@@ -618,6 +668,7 @@ def test_ckw02():
         os.remove(CK2) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ckw03():
     spice.kclear()
     CK3 = os.path.join(cwd, "type3.bc")
@@ -659,6 +710,7 @@ def test_ckw03():
         os.remove(CK3) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ckw05():
     spice.kclear()
     CK5 = os.path.join(cwd, "type5.bc")
@@ -702,19 +754,23 @@ def test_ckw05():
         os.remove(CK5)  # pragma: no cover
     spice.kclear()
 
+@spice.tempNaifContext
 def test_stress_ckw05():
     for i in range(1000):
         test_ckw05()
 
+@spice.tempNaifContext
 def test_cleard():
     with pytest.raises(NotImplementedError):
         spice.cleard()
 
 
+@spice.tempNaifContext
 def test_clight():
     assert spice.clight() == 299792.458
 
 
+@spice.tempNaifContext
 def test_clpool():
     spice.kclear()
     spice.pdpool('TEST_VAR', [-666.0])
@@ -727,6 +783,7 @@ def test_clpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_cmprss():
     strings = ['ABC...DE.F...', '...........', '.. ..AB....CD']
     assert spice.cmprss('.', 2, strings[0]) == 'ABC..DE.F..'
@@ -737,12 +794,14 @@ def test_cmprss():
     assert spice.cmprss(' ', 0, ' Embe dde d -sp   a c  es   ') == 'Embedded-spaces'
 
 
+@spice.tempNaifContext
 def test_cnmfrm():
     ioFrcode, ioFrname = spice.cnmfrm('IO')
     assert ioFrcode == 10023
     assert ioFrname == 'IAU_IO'
 
 
+@spice.tempNaifContext
 def test_conics():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -761,6 +820,7 @@ def test_conics():
     npt.assert_array_almost_equal(pert, expectedPert, decimal=5)
 
 
+@spice.tempNaifContext
 def test_convrt():
     assert spice.convrt(300.0, 'statute_miles', 'km') == 482.80320
     npt.assert_almost_equal(spice.convrt(1.0, 'parsecs', 'lightyears'), 3.2615638, decimal=6)
@@ -768,6 +828,7 @@ def test_convrt():
     npt.assert_almost_equal(spice.convrt([1.0, 2.0], 'AU', 'km'), [ 149597870.7, 299195741.4], decimal=0)
 
 
+@spice.tempNaifContext
 def test_copy():
     # SPICEINT_CELL; dtype=2
     outCell = spice.bltfrm(-1)
@@ -799,6 +860,7 @@ def test_copy():
         spice.copy(cellSrc)
 
 
+@spice.tempNaifContext
 def test_cpos():
     string = "BOB, JOHN, TED, AND MARTIN...."
     assert spice.cpos(string, " ,", 0) == 3
@@ -814,6 +876,7 @@ def test_cpos():
     assert spice.cpos(string, " ,", 1230) == -1
 
 
+@spice.tempNaifContext
 def test_cposr():
     string = "BOB, JOHN, TED, AND MARTIN...."
     assert spice.cposr(string, " ,", 29) == 19
@@ -831,6 +894,7 @@ def test_cposr():
     assert spice.cposr(string, " ,", -10) == -1
 
 
+@spice.tempNaifContext
 def test_cvpool():
     spice.kclear()
     # add TEST_VAR_CVPOOL
@@ -849,20 +913,24 @@ def test_cvpool():
     assert updated is True
 
 
+@spice.tempNaifContext
 def test_cyllat():
     assert spice.cyllat(1.0, 180.0*spice.rpd(), -1.0) == (np.sqrt(2), np.pi, -np.pi/4)
 
 
+@spice.tempNaifContext
 def test_cylrec():
     npt.assert_array_almost_equal(spice.cylrec(0.0, np.radians(33.0), 0.0), [0.0, 0.0, 0.0])
 
 
+@spice.tempNaifContext
 def test_cylsph():
     a = np.array(spice.cylsph(1.0, np.deg2rad(180.0), 1.0))
     b = np.array([1.4142, np.deg2rad(180.0), np.deg2rad(45.0)])
     np.testing.assert_almost_equal(b, a, decimal=4)
 
 
+@spice.tempNaifContext
 def test_dafac():
     # Create new DAF using CKOPN
     spice.kclear()
@@ -909,6 +977,7 @@ def test_dafac():
       os.remove(dafpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_dafbbs():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -919,6 +988,7 @@ def test_dafbbs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafbfs():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -929,6 +999,7 @@ def test_dafbfs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafcls():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -939,6 +1010,7 @@ def test_dafcls():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafcs():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -950,6 +1022,7 @@ def test_dafcs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafdc():
     spice.kclear()
     dafpath = os.path.join(cwd, "ex_dafdc.bc")
@@ -997,6 +1070,7 @@ def test_dafdc():
       os.remove(dafpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_dafec():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1013,6 +1087,7 @@ def test_dafec():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_daffna():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1023,6 +1098,7 @@ def test_daffna():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_daffpa():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1033,6 +1109,7 @@ def test_daffpa():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafgda():
     # not a very good test...
     spice.kclear()
@@ -1043,6 +1120,7 @@ def test_dafgda():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafgh():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1054,6 +1132,7 @@ def test_dafgh():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafgn():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1068,6 +1147,7 @@ def test_dafgn():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafgs():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1080,12 +1160,14 @@ def test_dafgs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafgsstress():
     # this is to show that memory issue with dafgs is fixed.
     for i in range(500):
         test_dafgs()
 
 
+@spice.tempNaifContext
 def test_dafgsr():
     spice.reset()
     spice.kclear()
@@ -1138,6 +1220,7 @@ def test_dafgsr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafopr():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1148,6 +1231,7 @@ def test_dafopr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafopw():
     spice.kclear()
     handle = spice.dafopw(CoreKernels.spk)
@@ -1158,6 +1242,7 @@ def test_dafopw():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafps_dafrs():
     spice.kclear()
     dafpath = os.path.join(cwd, "ckopenkernel_dafps.bc")
@@ -1206,6 +1291,7 @@ def test_dafps_dafrs():
         os.remove(dafpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_dafrda():
     spice.reset()
     spice.kclear()
@@ -1265,6 +1351,7 @@ def test_dafrda():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafrfr():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1278,6 +1365,7 @@ def test_dafrfr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dafus():
     spice.kclear()
     handle = spice.dafopr(CoreKernels.spk)
@@ -1292,6 +1380,7 @@ def test_dafus():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dasac_dasopr_dasec_dasdc():
     spice.kclear()
     daspath = os.path.join(cwd, "ex_dasac.das")
@@ -1351,6 +1440,7 @@ def test_dasac_dasopr_dasec_dasdc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dasopw_dascls_dasopr():
     spice.kclear()
     daspath = os.path.join(cwd, "ex_das.das")
@@ -1370,6 +1460,7 @@ def test_dasopw_dascls_dasopr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dcyldr():
     output = spice.dcyldr(1.0, 0.0, 0.0)
     expected = [[1.0, 0.0, 0.0],
@@ -1378,6 +1469,7 @@ def test_dcyldr():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_deltet():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -1392,12 +1484,14 @@ def test_deltet():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_det():
     m1 = np.array([[5.0, -2.0, 1.0], [0.0, 3.0, -1.0], [2.0, 0.0, 7.0]])
     expected = 103
     assert spice.det(m1) == expected
 
 
+@spice.tempNaifContext
 def test_dgeodr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -1415,6 +1509,7 @@ def test_dgeodr():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_diags2():
     mat = [[1.0, 4.0], [4.0, -5.0]]
     diag, rot = spice.diags2(mat)
@@ -1424,6 +1519,7 @@ def test_diags2():
     npt.assert_array_almost_equal(rot, expectedRot)
 
 
+@spice.tempNaifContext
 def test_diff():
     # SPICEINT_CELL
     testCellOne = spice.cell_int(8)
@@ -1471,6 +1567,7 @@ def test_diff():
         spice.diff(testCellOne, testCellTwo)
 
 
+@spice.tempNaifContext
 def test_dlabfs():
     spice.kclear()
     handle = spice.dasopr(ExtraKernels.phobosDsk)
@@ -1483,6 +1580,7 @@ def test_dlabfs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dlabbs():
     spice.kclear()
     handle = spice.dasopr(ExtraKernels.phobosDsk)
@@ -1495,6 +1593,7 @@ def test_dlabbs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dlatdr():
     output = spice.dlatdr(1.0, 0.0, 0.0)
     expected = [[1.0, 0.0, 0.0],
@@ -1503,6 +1602,7 @@ def test_dlatdr():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_dp2hx():
     assert spice.dp2hx(2.0e-9) == "89705F4136B4A8^-7"
     assert spice.dp2hx(1.0) == "1^1"
@@ -1514,6 +1614,7 @@ def test_dp2hx():
     assert spice.dp2hx(0.0) == "0^0"
 
 
+@spice.tempNaifContext
 def test_dpgrdr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -1529,18 +1630,22 @@ def test_dpgrdr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dpmax():
     assert spice.dpmax() >= 1.0e37
 
 
+@spice.tempNaifContext
 def test_dpmin():
     assert spice.dpmin() <= -1.0e37
 
 
+@spice.tempNaifContext
 def test_dpr():
     assert spice.dpr() == 180.0 / np.arccos(-1.0)
 
 
+@spice.tempNaifContext
 def test_drdcyl():
     output = spice.drdcyl(1.0, np.deg2rad(180.0), 1.0)
     expected = [[-1.0, 0.0, 0.0],
@@ -1549,6 +1654,7 @@ def test_drdcyl():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_drdgeo():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -1565,6 +1671,7 @@ def test_drdgeo():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_drdlat():
     output = spice.drdlat(1.0, 90.0 * spice.rpd(), 0.0)
     expected = [[0.0, -1.0, -0.0],
@@ -1573,6 +1680,7 @@ def test_drdlat():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_drdpgr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -1588,6 +1696,7 @@ def test_drdpgr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_drdsph():
     output = spice.drdsph(1.0, np.pi / 2, np.pi)
     expected = [[-1.0, 0.0, 0.0],
@@ -1596,6 +1705,7 @@ def test_drdsph():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_dskgtl_dskstl():
     SPICE_DSK_KEYXFR = 1
     assert spice.dskgtl(SPICE_DSK_KEYXFR) == pytest.approx(1.0e-10)
@@ -1605,6 +1715,7 @@ def test_dskgtl_dskstl():
     assert spice.dskgtl(SPICE_DSK_KEYXFR) == pytest.approx(1.0e-10)
 
 
+@spice.tempNaifContext
 def test_dskobj_dsksrf():
     spice.reset()
     spice.kclear()
@@ -1616,6 +1727,7 @@ def test_dskobj_dsksrf():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_dskopn_dskcls():
     spice.kclear()
     dskpath = os.path.join(cwd, "TEST.dsk")
@@ -1629,6 +1741,7 @@ def test_dskopn_dskcls():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dskb02():
     spice.kclear()
     # open the dsk file
@@ -1650,6 +1763,7 @@ def test_dskb02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskd02():
     spice.kclear()
     # open the dsk file
@@ -1664,6 +1778,7 @@ def test_dskd02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskgd():
     spice.kclear()
     # open the dsk file
@@ -1692,6 +1807,7 @@ def test_dskgd():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dski02():
     spice.kclear()
     # open the dsk file
@@ -1705,6 +1821,7 @@ def test_dski02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskn02():
     spice.kclear()
     # open the dsk file
@@ -1718,6 +1835,7 @@ def test_dskn02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskp02():
     spice.kclear()
     # open the dsk file
@@ -1731,6 +1849,7 @@ def test_dskp02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskv02():
     spice.kclear()
     # open the dsk file
@@ -1744,6 +1863,7 @@ def test_dskv02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskw02_dskrb2_dskmi2():
     spice.kclear()
     dskpath = os.path.join(cwd, "TESTdskw02.dsk")
@@ -1808,6 +1928,7 @@ def test_dskw02_dskrb2_dskmi2():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dskx02():
     spice.kclear()
     # open the dsk file
@@ -1829,6 +1950,7 @@ def test_dskx02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskxsi():
     spice.kclear()
     # load kernels
@@ -1854,6 +1976,7 @@ def test_dskxsi():
     npt.assert_almost_equal(xpt, [12.36679999999999957083, 0.0, 0.0])
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskxv():
     spice.kclear()
     # load kernels
@@ -1879,6 +2002,7 @@ def test_dskxv():
     npt.assert_almost_equal(xpt[0], [12.36679999999999957083, 0.0, 0.0])
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskxv_2():
     spice.kclear()
     # load kernels
@@ -1936,6 +2060,7 @@ def test_dskxv_2():
     assert foundarray.all()
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dskz02():
     spice.kclear()
     # open the dsk file
@@ -1949,6 +2074,7 @@ def test_dskz02():
     spice.dascls(handle)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_dsphdr():
     output = spice.dsphdr(-1.0, 0.0, 0.0)
     expected = [[-1.0, 0.0, 0.0],
@@ -1957,6 +2083,7 @@ def test_dsphdr():
     npt.assert_array_almost_equal(output, expected)
 
 
+@spice.tempNaifContext
 def test_dtpool():
     spice.kclear()
     lmpoolNames = ['DELTET/DELTA_T_A', 'DELTET/K', 'DELTET/EB', 'DELTET/M', 'DELTET/DELTA_AT']
@@ -1993,6 +2120,7 @@ def test_dtpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ducrss():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2008,6 +2136,7 @@ def test_ducrss():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dvcrss():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2024,10 +2153,12 @@ def test_dvcrss():
     npt.assert_almost_equal(z, expected)
 
 
+@spice.tempNaifContext
 def test_dvdot():
     assert spice.dvdot([1.0, 0.0, 1.0, 0.0, 1.0, 0.0], [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]) == 3.0
 
 
+@spice.tempNaifContext
 def test_dvhat():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2040,6 +2171,7 @@ def test_dvhat():
     npt.assert_array_almost_equal(expected, x_new)
 
 
+@spice.tempNaifContext
 def test_dvnorm():
     mag = np.array([-4.0, 4, 12])
     x = np.array([1.0, np.sqrt(2.0), np.sqrt(3.0)])
@@ -2051,6 +2183,7 @@ def test_dvnorm():
     npt.assert_approx_equal(spice.dvnorm(s3), 0.0)
 
 
+@spice.tempNaifContext
 def test_dvpool():
     spice.kclear()
     spice.pdpool("DTEST_VAL", [3.1415, 186.0, 282.397])
@@ -2061,6 +2194,7 @@ def test_dvpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_dvsep():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2072,6 +2206,7 @@ def test_dvsep():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_edlimb():
     viewpt = [2.0, 0.0, 0.0]
     limb = spice.edlimb(np.sqrt(2), 2.0 * np.sqrt(2), np.sqrt(2), viewpt)
@@ -2083,6 +2218,7 @@ def test_edlimb():
     npt.assert_array_almost_equal(limb.semi_minor, expectedSMinor)
 
 
+@spice.tempNaifContext
 def test_edterm():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2130,6 +2266,7 @@ def test_edterm():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ekacec():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekacec.ek")
@@ -2146,6 +2283,7 @@ def test_ekacec():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekaced():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekaced.ek")
@@ -2162,6 +2300,7 @@ def test_ekaced():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekmany():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekmany.ek")
@@ -2302,6 +2441,7 @@ def test_ekmany():
         os.remove(ekpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ekaclc():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekaclc.ek")
@@ -2319,6 +2459,7 @@ def test_ekaclc():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekacld():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekacld.ek")
@@ -2336,6 +2477,7 @@ def test_ekacld():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekacli():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekacli.ek")
@@ -2353,11 +2495,13 @@ def test_ekacli():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekacli_stress():
     for i in range(10):
         test_ekacli()
 
 
+@spice.tempNaifContext
 def test_ekappr():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekappr.ek")
@@ -2374,6 +2518,7 @@ def test_ekappr():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekbseg():
     ekpath = os.path.join(cwd, "example_ekbseg.ek")
     spice.kclear()
@@ -2394,11 +2539,13 @@ def test_ekbseg():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekbseg_stress():
     for i in range(10):
         test_ekbseg()
 
 
+@spice.tempNaifContext
 def test_ekccnt():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekccnt.ek")
@@ -2420,6 +2567,7 @@ def test_ekccnt():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekcii():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekcii.ek")
@@ -2449,6 +2597,7 @@ def test_ekcii():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekcls():
     spice.kclear()  # same as ekopn test
     ekpath = os.path.join(cwd, "example_ekcls.ek")
@@ -2462,6 +2611,7 @@ def test_ekcls():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ekdelr():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekdelr.ek")
@@ -2480,11 +2630,13 @@ def test_ekdelr():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekdelr_stress():
     for i in range(10):
         test_ekdelr()
 
 
+@spice.tempNaifContext
 def test_ekffld():
     # same as test_ekacli
     spice.kclear()
@@ -2503,11 +2655,13 @@ def test_ekffld():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekffld_stress():
     for i in range(10):
         test_ekffld()
 
 
+@spice.tempNaifContext
 def test_ekfind():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekfind.ek")
@@ -2530,11 +2684,13 @@ def test_ekfind():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekfind_stess():
     for i in range(10):
         test_ekfind()
 
 
+@spice.tempNaifContext
 def test_ekgc():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekgc.ek")
@@ -2562,6 +2718,7 @@ def test_ekgc():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekgd():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekgd.ek")
@@ -2589,6 +2746,7 @@ def test_ekgd():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekgi():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekgi.ek")
@@ -2616,6 +2774,7 @@ def test_ekgi():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekifld():
     # Same as test_ekacli
     spice.kclear()
@@ -2634,6 +2793,7 @@ def test_ekifld():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_eklef():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_eklef.ek")
@@ -2652,6 +2812,7 @@ def test_eklef():
         os.remove(ekpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_eknseg():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_eknseg.ek")
@@ -2672,10 +2833,12 @@ def test_eknseg():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekntab():
     assert spice.ekntab() == 0
 
 
+@spice.tempNaifContext
 def test_ekopn():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ek.ek")
@@ -2689,6 +2852,7 @@ def test_ekopn():
         os.remove(ekpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ekopr():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekopr.ek")
@@ -2705,6 +2869,7 @@ def test_ekopr():
         os.remove(ekpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_ekops():
     spice.kclear()
     handle = spice.ekops()
@@ -2713,6 +2878,7 @@ def test_ekops():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ekopw():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekopw.ek")
@@ -2729,6 +2895,7 @@ def test_ekopw():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ekssum():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekssum.ek")
@@ -2755,6 +2922,7 @@ def test_ekssum():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ektnam():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ektnam.ek")
@@ -2776,18 +2944,22 @@ def test_ektnam():
     assert not spice.exists(ekpath)
 
 
+@spice.tempNaifContext
 def test_ekucec():
     assert 1
 
 
+@spice.tempNaifContext
 def test_ekuced():
     assert 1
 
 
+@spice.tempNaifContext
 def test_ekucei():
     assert 1
 
 
+@spice.tempNaifContext
 def test_ekuef():
     spice.kclear()
     ekpath = os.path.join(cwd, "example_ekuef.ek")
@@ -2806,6 +2978,7 @@ def test_ekuef():
         os.remove(ekpath) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_el2cgv():
     vec1 = [1.0, 1.0, 1.0]
     vec2 = [1.0, -1.0, 1.0]
@@ -2821,6 +2994,7 @@ def test_el2cgv():
     npt.assert_array_almost_equal(outSminor, expectedSminor)
 
 
+@spice.tempNaifContext
 def test_elemc():
     testCellOne = spice.cell_char(10, 10)
     spice.insrtc("one", testCellOne)
@@ -2833,6 +3007,7 @@ def test_elemc():
     assert not spice.elemc("there", testCellOne)
 
 
+@spice.tempNaifContext
 def test_elemd():
     testCellOne = spice.cell_double(8)
     spice.insrtd(1.0, testCellOne)
@@ -2845,6 +3020,7 @@ def test_elemd():
     assert not spice.elemd(-1.0, testCellOne)
 
 
+@spice.tempNaifContext
 def test_elemi():
     testCellOne = spice.cell_int(8)
     spice.insrti(1, testCellOne)
@@ -2857,6 +3033,7 @@ def test_elemi():
     assert not spice.elemi(-1, testCellOne)
 
 
+@spice.tempNaifContext
 def test_eqncpv():
     p = 10000.0
     gm = 398600.436
@@ -2876,17 +3053,20 @@ def test_eqncpv():
     npt.assert_array_almost_equal(expected, state, decimal=5)
 
 
+@spice.tempNaifContext
 def test_eqstr():
     assert spice.eqstr("A short string    ", "ashortstring")
     assert spice.eqstr("Embedded        blanks", "Em be dd ed bl an ks")
     assert spice.eqstr("One word left out", "WORD LEFT OUT") is False
 
 
+@spice.tempNaifContext
 def test_erract():
     assert spice.erract("GET", 10, "") == "RETURN"
     assert spice.erract("GET", 10) == "RETURN"
 
 
+@spice.tempNaifContext
 def test_errch():
     spice.setmsg("test errch value: #")
     spice.errch("#", "some error")
@@ -2896,10 +3076,12 @@ def test_errch():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_errdev():
     assert spice.errdev("GET", 10, "Screen") == "NULL"
 
 
+@spice.tempNaifContext
 def test_errdp():
     spice.setmsg("test errdp value: #")
     spice.errdp("#", 42.1)
@@ -2909,6 +3091,7 @@ def test_errdp():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_errint():
     spice.setmsg("test errint value: #")
     spice.errint("#", 42)
@@ -2918,10 +3101,12 @@ def test_errint():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_errprt():
     assert spice.errprt("GET", 40, "ALL") == "NULL"
 
 
+@spice.tempNaifContext
 def test_esrchc():
     array = ["This", "is", "a", "test"]
     assert spice.esrchc("This", array) == 0
@@ -2931,6 +3116,7 @@ def test_esrchc():
     assert spice.esrchc("fail", array) == -1
 
 
+@spice.tempNaifContext
 def test_et2lst():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2944,6 +3130,7 @@ def test_et2lst():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_et2utc():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2953,6 +3140,7 @@ def test_et2utc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_et2utc_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2962,6 +3150,7 @@ def test_et2utc_vectorized():
     spice.kclear()
         
 
+@spice.tempNaifContext
 def test_etcal():
     et = np.arange(0, 20)
     cal = spice.etcal(et[0])
@@ -2972,11 +3161,13 @@ def test_etcal():
     assert calArr[-1] == '2000 JAN 01 12:00:19.000'
 
 
+@spice.tempNaifContext
 def test_eul2m():
     rot = np.array(spice.eul2m(spice.halfpi(), 0.0, 0.0, 3, 1, 1))
     assert rot.shape == ((3, 3))
 
 
+@spice.tempNaifContext
 def test_eul2xf():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -2989,6 +3180,7 @@ def test_eul2xf():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ev2lin():
     spice.kclear()
     # lightsail 2
@@ -3018,10 +3210,12 @@ def test_ev2lin():
     npt.assert_array_almost_equal(expected_state_86400, state_86400)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_exists():
     assert spice.exists(CoreKernels.testMetaKernel)
 
 
+@spice.tempNaifContext
 def test_expool():
     spice.kclear()
     textbuf = ['DELTET/K = 1.657D-3', 'DELTET/EB = 1.671D-2']
@@ -3031,16 +3225,19 @@ def test_expool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_expoolstress():
     # this is to show that the bug in lmpool is fixed (lenvals needs +=1)
     for i in range(500):
         test_expool()
 
 
+@spice.tempNaifContext
 def test_failed():
     assert not spice.failed()
 
 
+@spice.tempNaifContext
 def test_fovray():
     spice.kclear()
     # load kernels
@@ -3062,6 +3259,7 @@ def test_fovray():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_fovtrg():
     spice.kclear()
     # load kernels
@@ -3081,6 +3279,7 @@ def test_fovtrg():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_frame():
     vec = [23.0, -3.0, 18.0]
     x, y, z = spice.frame(vec)
@@ -3092,15 +3291,18 @@ def test_frame():
     npt.assert_array_almost_equal(expected_z, z)
 
 
+@spice.tempNaifContext
 def test_frinfo():
     assert spice.frinfo(13000) == (399, 2, 3000)
 
 
+@spice.tempNaifContext
 def test_frmnam():
     assert spice.frmnam(13000) == "ITRF93"
     assert spice.frmnam(13000) == "ITRF93"
 
 
+@spice.tempNaifContext
 def test_ftncls():
     import datetime
     spice.reset()
@@ -3126,6 +3328,7 @@ def test_ftncls():
         os.remove(FTNCLS)  # pragma no cover
 
 
+@spice.tempNaifContext
 def test_furnsh():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3134,6 +3337,7 @@ def test_furnsh():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_furnsh_vectorized():
     spice.kclear()
     spice.furnsh([CoreKernels.testMetaKernel, ExtraKernels.voyagerSclk])
@@ -3142,6 +3346,7 @@ def test_furnsh_vectorized():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gcpool():
     # same as pcpool test
     import string
@@ -3153,6 +3358,7 @@ def test_gcpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gdpool():
     # same as pdpool test
     spice.kclear()
@@ -3163,6 +3369,7 @@ def test_gdpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_georec():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3177,6 +3384,7 @@ def test_georec():
     npt.assert_array_almost_equal(expected, output)
 
 
+@spice.tempNaifContext
 def test_getelm():
     spice.kclear()
     tle = ['1 18123U 87 53  A 87324.61041692 -.00000023  00000-0 -75103-5 0 00675',
@@ -3192,12 +3400,14 @@ def test_getelm():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_getfat():
     arch, outtype = spice.getfat(CoreKernels.lsk)
     assert arch == "KPL"
     assert outtype == "LSK"
 
 
+@spice.tempNaifContext
 def test_getfov():
     spice.kclear()
     kernel = os.path.join(cwd, 'getfov_test.ti')
@@ -3226,6 +3436,7 @@ def test_getfov():
         os.remove(kernel) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_getmsg():
     spice.sigerr("test error")
     message = spice.getmsg("SHORT", 200)
@@ -3233,15 +3444,18 @@ def test_getmsg():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_gfbail():
     assert not spice.gfbail()
 
 
+@spice.tempNaifContext
 def test_gfclrh():
     spice.gfclrh()
     assert not spice.gfbail()
 
 
+@spice.tempNaifContext
 def test_gfdist():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3268,6 +3482,7 @@ def test_gfdist():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfevnt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3311,6 +3526,7 @@ def test_gfevnt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gffove():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3352,6 +3568,7 @@ def test_gffove():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfilum():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3391,12 +3608,14 @@ def test_gfilum():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfinth():
     spice.gfinth(2)
     with pytest.raises(spice.stypes.SpiceyError):
         spice.gfinth(0)
 
 
+@spice.tempNaifContext
 def test_gfocce():
     spice.kclear()
     if spice.gfbail():
@@ -3426,6 +3645,7 @@ def test_gfocce():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfoclt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3446,6 +3666,7 @@ def test_gfoclt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfpa():
     relate = ["=", "<", ">", "LOCMIN", "ABSMIN", "LOCMAX", "ABSMAX"]
     expected = {"=": ['2006-DEC-02 13:31:34.425', '2006-DEC-02 13:31:34.425', '2006-DEC-07 14:07:55.480', '2006-DEC-07 14:07:55.480',
@@ -3482,6 +3703,7 @@ def test_gfpa():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfposc():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3502,6 +3724,7 @@ def test_gfposc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfrefn():
     s1 = [True, False]
     s2 = [True, False]
@@ -3527,6 +3750,7 @@ def test_gfrefn():
             t  = spice.gfrefn(t1, t2, s1[i], s2[j])
             assert t == pytest.approx(-scale)
 
+@spice.tempNaifContext
 def test_gfrepf():
     # Minimal test; gfrepf does nothing PyTest can notice
     spice.gfrepf()
@@ -3535,6 +3759,7 @@ def test_gfrepf():
         spice.gfrepf(0)
 
 
+@spice.tempNaifContext
 def test_gfrepi():
     window = spice.cell_double(4)
     spice.wninsd(0., 100., window)
@@ -3555,6 +3780,7 @@ def test_gfrepi():
     spice.gfrepf()
 
 
+@spice.tempNaifContext
 def test_gfrepu():
     window = spice.cell_double(4)
     spice.wninsd(0., 100., window)
@@ -3571,6 +3797,7 @@ def test_gfrepu():
     spice.gfrepf()
 
 
+@spice.tempNaifContext
 def test_gfrfov():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3609,6 +3836,7 @@ def test_gfrfov():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfrr():
     relate = ["=", "<", ">", "LOCMIN", "ABSMIN", "LOCMAX", "ABSMAX"]
     expected = {"=": ['2007-JAN-02 00:35:19.583', '2007-JAN-02 00:35:19.583', '2007-JAN-19 22:04:54.905',
@@ -3650,6 +3878,7 @@ def test_gfrr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfsep():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3678,6 +3907,7 @@ def test_gfsep():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfsntc():
     spice.kclear()
     kernel = os.path.join(cwd, 'gfnstc_test.tf')
@@ -3731,21 +3961,25 @@ def test_gfsntc():
         os.remove(kernel) # pragma: no cover # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_gfsstp():
     spice.gfsstp(0.5)
     assert spice.gfstep(0.5) == 0.5
 
 
+@spice.tempNaifContext
 def test_gfstep():
     spice.gfsstp(0.5)
     assert spice.gfstep(0.5) == 0.5
 
 
+@spice.tempNaifContext
 def test_gfstol():
     spice.gfstol(1.0e-16)
     spice.gfstol(1.0e-6)
 
 
+@spice.tempNaifContext
 def test_gfsubc():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3766,6 +4000,7 @@ def test_gfsubc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gftfov():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3800,6 +4035,7 @@ def test_gftfov():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfudb():
     spice.kclear()
     # load kernels
@@ -3829,6 +4065,7 @@ def test_gfudb():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfudb2():
     spice.kclear()
     # load kernels
@@ -3860,6 +4097,7 @@ def test_gfudb2():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gfuds():
     relations = ["=", "<", ">", "LOCMIN", "ABSMIN", "LOCMAX", "ABSMAX"]
     spice.kclear()
@@ -3894,6 +4132,7 @@ def test_gfuds():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gipool():
     # same as pipool test
     spice.kclear()
@@ -3904,6 +4143,7 @@ def test_gipool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_gnpool():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -3918,10 +4158,12 @@ def test_gnpool():
     assert set(expected) == set(kervar)
 
 
+@spice.tempNaifContext
 def test_halfpi():
     assert spice.halfpi() == np.pi / 2
 
 
+@spice.tempNaifContext
 def test_hrmint():
     xvals = [-1.0, 0.0, 3.0, 5.0]
     yvals = [6.0, 3.0, 5.0, 0.0, 2210.0, 5115.0, 78180.0, 109395.0]
@@ -3930,6 +4172,7 @@ def test_hrmint():
     assert deriv  == pytest.approx(456.0)
 
 
+@spice.tempNaifContext
 def test_hx2dp():
     assert spice.hx2dp('1^1') == 1.0
     assert spice.hx2dp('7F5EB^5') == 521707.0
@@ -3939,12 +4182,14 @@ def test_hx2dp():
     assert spice.hx2dp('1Z^+2')[:len(badReturn)] == badReturn
 
 
+@spice.tempNaifContext
 def test_ident():
     ident = spice.ident()
     expected = np.identity(3)
     npt.assert_array_almost_equal(ident, expected)
 
 
+@spice.tempNaifContext
 def test_illum():
     # Nearly the same as first half of test_edterm
     # possibly not smart to pick a terminator point for test.
@@ -3962,6 +4207,7 @@ def test_illum():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ilumin():
     # Same as first half of test_edterm
     spice.kclear()
@@ -3993,6 +4239,7 @@ def test_ilumin():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_illumf():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4022,6 +4269,7 @@ def test_illumf():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_illumg():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4045,6 +4293,7 @@ def test_illumg():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_inedpl():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4073,6 +4322,7 @@ def test_inedpl():
     npt.assert_almost_equal(spice.vnorm(term.semi_minor), 6358.0558, decimal=2)
 
 
+@spice.tempNaifContext
 def test_inelpl():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4091,6 +4341,7 @@ def test_inelpl():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_inrypl():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4107,6 +4358,7 @@ def test_inrypl():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_insrtc():
     testCell = spice.cell_char(10, 10)
     cList = ["aaa", "bbb", "ccc", "bbb"]
@@ -4115,6 +4367,7 @@ def test_insrtc():
     assert [x for x in testCell] == ["aaa", "bbb", "ccc"]
 
 
+@spice.tempNaifContext
 def test_insrtc_vectorized():
     testCell = spice.cell_char(10, 10)
     cList = ["aaa", "bbb", "ccc", "bbb"]
@@ -4122,6 +4375,7 @@ def test_insrtc_vectorized():
     assert [x for x in testCell] == ["aaa", "bbb", "ccc"]
 
 
+@spice.tempNaifContext
 def test_insrtd():
     testCell = spice.cell_double(8)
     dlist = [0.5, 2.0, 30.0, 0.01, 30.0]
@@ -4130,6 +4384,7 @@ def test_insrtd():
     assert [x for x in testCell] == [0.01, 0.5, 2.0, 30.0]
 
 
+@spice.tempNaifContext
 def test_insrtd_vectorized():
     testCell = spice.cell_double(8)
     dList = [0.5, 2.0, 30.0, 0.01, 30.0]
@@ -4137,6 +4392,7 @@ def test_insrtd_vectorized():
     assert [x for x in testCell] == [0.01, 0.5, 2.0, 30.0]
 
 
+@spice.tempNaifContext
 def test_insrti():
     testCell = spice.cell_int(8)
     ilist = [1, 2, 30, 1, 30]
@@ -4145,6 +4401,7 @@ def test_insrti():
     assert [x for x in testCell] == [1, 2, 30]
 
 
+@spice.tempNaifContext
 def test_insrti_vectorized():
     testCell = spice.cell_int(8)
     iList = [1, 2, 30, 1, 30]
@@ -4152,6 +4409,7 @@ def test_insrti_vectorized():
     assert [x for x in testCell] == [1, 2, 30]
 
 
+@spice.tempNaifContext
 def test_inter():
     testCellOne = spice.cell_int(8)
     testCellTwo = spice.cell_int(8)
@@ -4186,14 +4444,17 @@ def test_inter():
         spice.inter(testCellOne, testCellTwo)
 
 
+@spice.tempNaifContext
 def test_intmax():
     assert spice.intmax() >= 2147483647 or spice.intmax() >= 32768
 
 
+@spice.tempNaifContext
 def test_intmin():
     assert spice.intmin() <= -2147483648 or spice.intmin() <= -32768
 
 
+@spice.tempNaifContext
 def test_invert():
     m1 = np.array([[0.0, -1.0, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 1.0]])
     expected = np.array([[0.0, 2.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -4201,6 +4462,7 @@ def test_invert():
     assert np.array_equal(expected, mout)
 
 
+@spice.tempNaifContext
 def test_invort():
     # I think this is valid...
     m = spice.ident()
@@ -4208,6 +4470,7 @@ def test_invort():
     npt.assert_array_almost_equal(m, mit)
 
 
+@spice.tempNaifContext
 def test_isordv():
     assert spice.isordv([0, 1], 2)
     assert spice.isordv([0, 1, 2], 3)
@@ -4215,6 +4478,7 @@ def test_isordv():
     assert spice.isordv([1, 1, 1], 3) is False
 
 
+@spice.tempNaifContext
 def test_isrchc():
     array = ["1", "0", "4", "2"]
     assert spice.isrchc("4", 4, 3, array) == 2
@@ -4222,6 +4486,7 @@ def test_isrchc():
     assert spice.isrchc("3", 4, 3, array) == -1
 
 
+@spice.tempNaifContext
 def test_isrchd():
     array = [1.0, 0.0, 4.0, 2.0]
     assert spice.isrchd(4.0, 4, array) == 2
@@ -4229,6 +4494,7 @@ def test_isrchd():
     assert spice.isrchd(3.0, 4, array) == -1
 
 
+@spice.tempNaifContext
 def test_isrchi():
     array = [1, 0, 4, 2]
     assert spice.isrchi(4, 4, array) == 2
@@ -4236,40 +4502,49 @@ def test_isrchi():
     assert spice.isrchi(3, 4, array) == -1
 
 
+@spice.tempNaifContext
 def test_isrot():
     assert spice.isrot(spice.ident(), 0.0001, 0.0001)
 
 
+@spice.tempNaifContext
 def test_iswhsp():
     assert spice.iswhsp("       ")
     assert spice.iswhsp("spice") is False
 
 
+@spice.tempNaifContext
 def test_j1900():
     assert spice.j1900() == 2415020.0
 
 
+@spice.tempNaifContext
 def test_j1950():
     assert spice.j1950() == 2433282.5
 
 
+@spice.tempNaifContext
 def test_j2000():
     assert spice.j2000() == 2451545.0
 
 
+@spice.tempNaifContext
 def test_j2100():
     assert spice.j2100() == 2488070.0
 
 
+@spice.tempNaifContext
 def test_jyear():
     assert spice.jyear() == 31557600.0
 
 
+@spice.tempNaifContext
 def test_kclear():
     spice.kclear()
     assert spice.ktotal("ALL") == 0
 
 
+@spice.tempNaifContext
 def test_kdata():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4278,6 +4553,7 @@ def test_kdata():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_kinfo():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4286,6 +4562,7 @@ def test_kinfo():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_kplfrm():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4294,6 +4571,7 @@ def test_kplfrm():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ktotal():
     spice.kclear()
     # same as unload test
@@ -4305,6 +4583,7 @@ def test_ktotal():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_kxtrct():
     # Tests from examples at this URL:  https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/kxtrct_c.html#Examples
     i = 0
@@ -4318,6 +4597,7 @@ def test_kxtrct():
             spice.kxtrct('NAME:', 'address: phone: name:'.upper().split(), 3, 'ADDRESS: 4800 OAK GROVE DRIVE PHONE: 354-4321 ')
 
 
+@spice.tempNaifContext
 def test_lastnb():
     assert spice.lastnb("ABCDE") == 4
     assert spice.lastnb("AN EXAMPLE") == 9
@@ -4325,6 +4605,7 @@ def test_lastnb():
     assert spice.lastnb("        ") == -1
 
 
+@spice.tempNaifContext
 def test_latcyl():
     expected1 = np.array([1.0, 0.0, 0.0])
     expected2 = np.array([1.0, 90.0 * spice.rpd(), 0.0])
@@ -4334,6 +4615,7 @@ def test_latcyl():
     npt.assert_array_almost_equal(expected3, spice.latcyl(1.0, 180.0 * spice.rpd(), 0.0), decimal=7)
 
 
+@spice.tempNaifContext
 def test_latrec():
     expected1 = np.array([1.0, 0.0, 0.0])
     expected2 = np.array([0.0, 1.0, 0.0])
@@ -4343,6 +4625,7 @@ def test_latrec():
     npt.assert_array_almost_equal(expected3, spice.latrec(1.0, 180.0 * spice.rpd(), 0.0), decimal=7)
 
 
+@spice.tempNaifContext
 def test_latsph():
     expected1 = np.array([1.0, 90.0 * spice.rpd(), 0.0])
     expected2 = np.array([1.0, 90.0 * spice.rpd(), 90.0 * spice.rpd()])
@@ -4352,6 +4635,7 @@ def test_latsph():
     npt.assert_array_almost_equal(expected3, spice.latsph(1.0, 180.0 * spice.rpd(), 0.0), decimal=7)
 
 
+@spice.tempNaifContext
 def test_latsrf():
     spice.kclear()
     spice.furnsh(ExtraKernels.phobosDsk)
@@ -4362,11 +4646,13 @@ def test_latsrf():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_lcase():
     assert spice.lcase("THIS IS AN EXAMPLE") == "THIS IS AN EXAMPLE".lower()
     assert spice.lcase("1234") == "1234"
 
 
+@spice.tempNaifContext
 def test_ldpool():
     spice.kclear()
     ldpoolNames = ['DELTET/DELTA_T_A', 'DELTET/K', 'DELTET/EB', 'DELTET/M', 'DELTET/DELTA_AT']
@@ -4414,12 +4700,14 @@ def test_ldpool():
         os.remove(kernel) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_lgrind():
     p, dp = spice.lgrind([-1.0, 0.0, 1.0, 3.0], [-2.0, -7.0, -8.0, 26.0], 2.0)
     assert p == pytest.approx(1.0)
     assert dp == pytest.approx(16.0)
 
 
+@spice.tempNaifContext
 def test_limbpt():
     spice.kclear()
     spice.furnsh(CoreKernels.spk)
@@ -4438,6 +4726,7 @@ def test_limbpt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_lmpool():
     spice.kclear()
     lmpoolNames = ['DELTET/DELTA_T_A', 'DELTET/K', 'DELTET/EB', 'DELTET/M', 'DELTET/DELTA_AT']
@@ -4474,6 +4763,7 @@ def test_lmpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_lmpool_numpy():
     spice.kclear()
     lmpoolNames = ['DELTET/DELTA_T_A', 'DELTET/K', 'DELTET/EB', 'DELTET/M', 'DELTET/DELTA_AT']
@@ -4510,18 +4800,21 @@ def test_lmpool_numpy():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_lmpoolstress():
     # occasional crash in lmpool believed to be caused by lenvals not being +=1'ed for end of line.
     for i in range(500):
         test_lmpool()
 
 
+@spice.tempNaifContext
 def test_lparse():
     stringtest = 'one two three four'
     items = spice.lparse(stringtest, ' ', 25)
     assert items == ['one', 'two', 'three', 'four']
 
 
+@spice.tempNaifContext
 def test_lparsm():
     stringtest = "  A number of words   separated   by spaces   "
     # Test with nmax (20) not equal to lenout (23), to ensure that
@@ -4533,6 +4826,7 @@ def test_lparsm():
     assert items == ['A', 'number', 'of', 'words', 'separated', 'by', 'spaces']
 
 
+@spice.tempNaifContext
 def test_lparss():
     stringtest = "  A number of words   separated   by spaces.   "
     delims = " ,."
@@ -4541,6 +4835,7 @@ def test_lparss():
     assert [x for x in outset] == expected
 
 
+@spice.tempNaifContext
 def test_lspcn():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4550,6 +4845,7 @@ def test_lspcn():
     npt.assert_almost_equal(lon, 0.48153755894179384)
 
 
+@spice.tempNaifContext
 def test_lstlec():
     array = ["BOHR", "EINSTEIN", "FEYNMAN", "GALILEO", "NEWTON"]
     lenvals = 10
@@ -4560,6 +4856,7 @@ def test_lstlec():
     assert spice.lstlec("BETHE", 5, lenvals, array) == -1
 
 
+@spice.tempNaifContext
 def test_lstled():
     array = [-2.0, -2.0, 0.0, 1.0, 1.0, 11.0]
     assert spice.lstled(-3.0, 6, array) == -1
@@ -4569,6 +4866,7 @@ def test_lstled():
     assert spice.lstled(11.1, 6, array) == 5
 
 
+@spice.tempNaifContext
 def test_lstlei():
     array = [-2, -2, 0, 1, 1, 11]
     assert spice.lstlei(-3, 6, array) == -1
@@ -4578,6 +4876,7 @@ def test_lstlei():
     assert spice.lstlei(12, 6, array) == 5
 
 
+@spice.tempNaifContext
 def test_lstltc():
     array = ["BOHR", "EINSTEIN", "FEYNMAN", "GALILEO", "NEWTON"]
     lenvals = 10
@@ -4588,6 +4887,7 @@ def test_lstltc():
     assert spice.lstltc("BETHE", 5, lenvals, array) == -1
 
 
+@spice.tempNaifContext
 def test_lstltd():
     array = [-2.0, -2.0, 0.0, 1.0, 1.0, 11.0]
     assert spice.lstltd(-3.0, 6, array) == -1
@@ -4597,6 +4897,7 @@ def test_lstltd():
     assert spice.lstltd(11.1, 6, array) == 5
 
 
+@spice.tempNaifContext
 def test_lstlti():
     array = [-2, -2, 0, 1, 1, 11]
     assert spice.lstlti(-3, 6, array) == -1
@@ -4606,6 +4907,7 @@ def test_lstlti():
     assert spice.lstlti(12, 6, array) == 5
 
 
+@spice.tempNaifContext
 def test_ltime():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -4624,12 +4926,14 @@ def test_ltime():
     assert receive_utc == '2004 JUL 03 23:11:21.248'
 
 
+@spice.tempNaifContext
 def test_lx4dec():
     assert spice.lx4dec("1%2%3", 0) == (0, 1)
     assert spice.lx4dec("1%2%3", 1) == (0, 0)
     assert spice.lx4dec("1%2%3", 2) == (2, 1)
 
 
+@spice.tempNaifContext
 def test_lx4num():
     assert spice.lx4num("1%2%3", 0) == (0, 1)
     assert spice.lx4num("1%2%3", 1) == (0, 0)
@@ -4637,17 +4941,20 @@ def test_lx4num():
     assert spice.lx4num("1%2e1%3", 2) == (4, 3)
 
 
+@spice.tempNaifContext
 def test_lx4sgn():
     assert spice.lx4sgn("1%2%3", 0) == (0, 1)
     assert spice.lx4sgn("1%2%3", 1) == (0, 0)
     assert spice.lx4sgn("1%2%3", 2) == (2, 1)
 
 
+@spice.tempNaifContext
 def test_lx4uns():
     # not a very good test
     assert spice.lx4uns("test 10 end", 4) == (3, 0)
 
 
+@spice.tempNaifContext
 def test_lxqstr():
     assert spice.lxqstr('The "SPICE" system', "\"", 4) == (10, 7)
     assert spice.lxqstr('The "SPICE" system', '"', 4) == (10, 7)
@@ -4659,6 +4966,7 @@ def test_lxqstr():
     assert spice.lxqstr("''", "'", 0) == (1, 2)
 
 
+@spice.tempNaifContext
 def test_m2eul():
     ticam = [[0.49127379678135830, 0.50872620321864170, 0.70699908539882417],
              [-0.50872620321864193, -0.49127379678135802, 0.70699908539882428],
@@ -4671,6 +4979,7 @@ def test_m2eul():
     npt.assert_array_almost_equal(expected, result)
 
 
+@spice.tempNaifContext
 def test_m2q():
     r = spice.rotate(spice.halfpi(), 3)
     q = spice.m2q(r)
@@ -4678,6 +4987,7 @@ def test_m2q():
     np.testing.assert_array_almost_equal(expected, q, decimal = 6)
 
 
+@spice.tempNaifContext
 def test_matchi():
     string = "  ABCDEFGHIJKLMNOPQRSTUVWXYZ  "
     wstr = "*"
@@ -4695,6 +5005,7 @@ def test_matchi():
     assert spice.matchi(string, " *bcD*Z*", wstr, wchr)
 
 
+@spice.tempNaifContext
 def test_matchw():
     string = "  ABCDEFGHIJKLMNOPQRSTUVWXYZ  "
     wstr = "*"
@@ -4712,18 +5023,21 @@ def test_matchw():
     assert spice.matchw(string, " *BCD*Z*", wstr, wchr)
 
 
+@spice.tempNaifContext
 def test_mequ():
     m1 = np.identity(3)
     mout = spice.mequ(m1)
     assert np.array_equal(m1, mout)
 
 
+@spice.tempNaifContext
 def test_mequg():
     m1 = np.identity(2)
     mout = spice.mequg(m1, 2, 2)
     assert np.array_equal(m1, mout)
 
 
+@spice.tempNaifContext
 def test_mtxm():
     m1 = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
     m2 = np.array([[1.0, 1.0, 0.0], [-1.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
@@ -4732,6 +5046,7 @@ def test_mtxm():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mtxmg():
     m1 = np.array([[1.0, 2.0, 3.0, 0.0], [1.0, 1.0, 1.0, 1.0]])
     m2 = np.array([[1.0, 2.0, 3.0], [0.0, 0.0, 0.0]])
@@ -4740,6 +5055,7 @@ def test_mtxmg():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mtxv():
     m1 = np.array([[1.0, 1.0, 0.0], [-1.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     vin = np.array([5.0, 10.0, 15.0])
@@ -4748,6 +5064,7 @@ def test_mtxv():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mtxvg():
     m1 = np.array([[1.0, 2.0], [1.0, 3.0], [1.0, 4.0]])
     v2 = np.array([1.0, 2.0, 3.0])
@@ -4756,6 +5073,7 @@ def test_mtxvg():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mxm():
     m1 = [[1.0, 1.0, 0.0], [-1.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     m2 = [[1.0, 0.0, 0.0], [0.0, 1.0, 1.0], [0.0, -1.0, 1.0]]
@@ -4766,6 +5084,7 @@ def test_mxm():
     assert np.array_equal(mout, mout2)
 
 
+@spice.tempNaifContext
 def test_mxmg():
     m1 = [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]]
     m2 = [[1.0, 2.0, 3.0], [2.0, 4.0, 6.0]]
@@ -4779,12 +5098,14 @@ def test_mxmg():
     assert np.array_equal(mout, mout2)
 
 
+@spice.tempNaifContext
 def test_mxmt():
     m1 = [[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]
     mout = spice.mxmt(m1, m1)
     assert np.array_equal(mout, np.identity(3))
 
 
+@spice.tempNaifContext
 def test_mxmtg():
     m1 = np.array([[1.0, 2.0, 3.0], [3.0, 2.0, 1.0]])
     m2 = np.array([[1.0, 2.0, 0.0], [2.0, 1.0, 2.0], [1.0, 2.0, 0.0], [2.0, 1.0, 2.0]])
@@ -4793,6 +5114,7 @@ def test_mxmtg():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mxv():
     m1 = np.array([[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
     vin = np.array([1.0, 2.0, 3.0])
@@ -4801,6 +5123,7 @@ def test_mxv():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_mxvg():
     m1 = np.array([[1.0, 1.0, 1.0], [2.0, 3.0, 4.0]])
     v2 = np.array([1.0, 2.0, 3.0])
@@ -4809,10 +5132,12 @@ def test_mxvg():
     assert np.array_equal(mout, expected)
 
 
+@spice.tempNaifContext
 def test_namfrm():
     assert spice.namfrm('J2000') == 1
 
 
+@spice.tempNaifContext
 def test_ncpos():
     string = "BOB, JOHN, TED, AND MARTIN    "
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -4833,6 +5158,7 @@ def test_ncpos():
     assert spice.ncpos(string, chars, 122) == -1
 
 
+@spice.tempNaifContext
 def test_ncposr():
     string = "BOB, JOHN, TED, AND MARTIN...."
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -4854,6 +5180,7 @@ def test_ncposr():
     assert spice.ncposr(string, chars, 122) == 29
 
 
+@spice.tempNaifContext
 def test_nearpt():
     a, b, c = 1.0, 2.0, 3.0
     point = [3.5, 0.0, 0.0]
@@ -4864,6 +5191,7 @@ def test_nearpt():
     npt.assert_array_almost_equal(pnear, expectedPnear)
 
 
+@spice.tempNaifContext
 def test_npedln():
     linept = [1.0e6, 2.0e6, 3.0e6]
     a, b, c = 7.0e5, 7.0e5, 6.0e5
@@ -4875,6 +5203,7 @@ def test_npedln():
     npt.assert_array_almost_equal(expectedPnear, pnear, decimal=2)
 
 
+@spice.tempNaifContext
 def test_npelpt():
     center = [1.0, 2.0, 3.0]
     smajor = [3.0, 0.0, 0.0]
@@ -4888,6 +5217,7 @@ def test_npelpt():
     npt.assert_array_almost_equal(expectedPnear, pnear)
 
 
+@spice.tempNaifContext
 def test_nplnpt():
     linept = [1.0, 2.0, 3.0]
     linedr = [0.0, 1.0, 1.0]
@@ -4899,6 +5229,7 @@ def test_nplnpt():
     npt.assert_array_almost_equal(expectedPnear, pnear)
 
 
+@spice.tempNaifContext
 def test_nvc2pl():
     normal = [1.0, 1.0, 1.0]
     constant = 23.0
@@ -4909,6 +5240,7 @@ def test_nvc2pl():
     npt.assert_almost_equal(plane.constant, expectedConstant, decimal=6)
 
 
+@spice.tempNaifContext
 def test_nvp2pl():
     normal = [1.0, 1.0, 1.0]
     point = [1.0, 4.0, 9.0]
@@ -4919,6 +5251,7 @@ def test_nvp2pl():
     npt.assert_almost_equal(plane.constant, expectedConstant, decimal=6)
 
 
+@spice.tempNaifContext
 def test_occult():
     spice.kclear()
     # load kernels
@@ -4946,6 +5279,7 @@ def test_occult():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ordc():
     charset = spice.cell_char(10, 10)
     inputs = ["8", "1", "2", "9", "7", "4", "10"]
@@ -4956,6 +5290,7 @@ def test_ordc():
         assert e == spice.ordc(i, charset)
 
 
+@spice.tempNaifContext
 def test_ordd():
     doubleset = spice.cell_double(7)
     inputs = [8.0, 1.0, 2.0, 9.0, 7.0, 4.0, 10.0]
@@ -4966,6 +5301,7 @@ def test_ordd():
         assert e == spice.ordd(i, doubleset)
 
 
+@spice.tempNaifContext
 def test_ordi():
     intset = spice.cell_int(7)
     inputs = [8, 1, 2, 9, 7, 4, 10]
@@ -4976,6 +5312,7 @@ def test_ordi():
         assert e == spice.ordi(i, intset)
 
 
+@spice.tempNaifContext
 def test_orderc():
     inarray = ["a", "abc", "ab"]
     expectedOrder = [0, 2, 1]
@@ -4986,6 +5323,7 @@ def test_orderc():
     npt.assert_array_almost_equal(expectedOrder, order)
 
 
+@spice.tempNaifContext
 def test_orderd():
     inarray = [0.0, 2.0, 1.0]
     expectedOrder = [0, 2, 1]
@@ -4996,6 +5334,7 @@ def test_orderd():
     npt.assert_array_almost_equal(expectedOrder, order)
 
 
+@spice.tempNaifContext
 def test_orderi():
     inarray = [0, 2, 1]
     expectedOrder = [0, 2, 1]
@@ -5006,6 +5345,7 @@ def test_orderi():
     npt.assert_array_almost_equal(expectedOrder, order)
 
 
+@spice.tempNaifContext
 def test_oscelt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5021,11 +5361,13 @@ def test_oscelt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_oscltx_stress():
     for i in range(0, 30):
         test_oscltx()
 
 
+@spice.tempNaifContext
 def test_oscltx():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5043,6 +5385,7 @@ def test_oscltx():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pckopn_pckw02_pckcls():
     pck = os.path.join(cwd, "test_pck.pck")
     if spice.exists(pck):
@@ -5056,6 +5399,7 @@ def test_pckopn_pckw02_pckcls():
         os.remove(pck) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_pckcov():
     spice.kclear()
     ids = spice.cell_int(1000)
@@ -5069,6 +5413,7 @@ def test_pckcov():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pckfrm():
     spice.kclear()
     ids = spice.cell_int(1000)
@@ -5077,6 +5422,7 @@ def test_pckfrm():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pcklof():
     spice.kclear()
     handle = spice.pcklof(ExtraKernels.earthHighPerPck)
@@ -5085,6 +5431,7 @@ def test_pcklof():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pckuof():
     spice.kclear()
     handle = spice.pcklof(ExtraKernels.earthHighPerPck)
@@ -5093,6 +5440,7 @@ def test_pckuof():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pcpool():
     import string
     spice.kclear()
@@ -5103,6 +5451,7 @@ def test_pcpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pdpool():
     spice.kclear()
     data = np.arange(0.0, 10.0)
@@ -5112,6 +5461,7 @@ def test_pdpool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pgrrec():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5125,6 +5475,7 @@ def test_pgrrec():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_phaseq():
     relate = ["=", "<", ">", "LOCMIN", "ABSMIN", "LOCMAX", "ABSMAX"]
     expected = {"=": [0.575988450, 0.575988450, 0.575988450, 0.575988450, 0.575988450,
@@ -5159,10 +5510,12 @@ def test_phaseq():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pi():
     assert spice.pi() == np.pi
 
 
+@spice.tempNaifContext
 def test_pipool():
     spice.kclear()
     data = np.arange(0, 10)
@@ -5172,6 +5525,7 @@ def test_pipool():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_pjelpl():
     center = [1.0, 1.0, 1.0]
     vec1 = [2.0, 0.0, 0.0]
@@ -5188,6 +5542,7 @@ def test_pjelpl():
     npt.assert_array_almost_equal(expectedSminor, ellipse.semi_minor)
 
 
+@spice.tempNaifContext
 def test_pl2nvc():
     normal = [-1.0, 5.0, -3.5]
     point = [9.0, -0.65, -12.0]
@@ -5198,6 +5553,7 @@ def test_pl2nvc():
     npt.assert_array_almost_equal(expectedNormal, normal, decimal=6)
 
 
+@spice.tempNaifContext
 def test_pl2nvp():
     plane_norm = [2.44, -5.0 / 3.0, 11.0 / 9.0]
     const = 3.141592654
@@ -5207,6 +5563,7 @@ def test_pl2nvp():
     npt.assert_array_almost_equal(expectedPoint, point)
 
 
+@spice.tempNaifContext
 def test_pl2psv():
     normal = [-1.0, 5.0, -3.5]
     point = [9.0, -0.65, -12.0]
@@ -5217,12 +5574,14 @@ def test_pl2psv():
     npt.assert_almost_equal(spice.vdot(span1, span2), 0)
 
 
+@spice.tempNaifContext
 def test_pltar():
     vrtces = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     plates = [[1, 4, 3], [1, 2, 4], [1, 3, 2], [2, 3, 4]]
     assert spice.pltar(vrtces, plates) == pytest.approx(2.3660254037844)
 
 
+@spice.tempNaifContext
 def test_pltexp():
     iverts = [[np.sqrt(3.0) / 2.0, -0.5, 7.0], [0.0, 1.0, 7.0], [-np.sqrt(3.0) / 2.0, -0.5, 7.0]]
     overts = spice.pltexp(iverts, 1.0)
@@ -5230,6 +5589,7 @@ def test_pltexp():
     npt.assert_array_almost_equal(expected, overts)
 
 
+@spice.tempNaifContext
 def test_pltnp():
     point = [2.0, 2.0, 2.0]
     v1 = [1.0, 0.0, 0.0]
@@ -5240,6 +5600,7 @@ def test_pltnp():
     assert distance == pytest.approx(2.8867513)
 
 
+@spice.tempNaifContext
 def test_pltnrm():
     v1 = [np.sqrt(3.0)/2.0, -0.5, 0.0]
     v2 = [0.0, 1.0, 0.0]
@@ -5247,17 +5608,20 @@ def test_pltnrm():
     npt.assert_array_almost_equal([0.0, 0.0, 2.59807621135], spice.pltnrm(v1, v2, v3))
 
 
+@spice.tempNaifContext
 def test_pltvol():
     vrtces = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     plates = [[1, 4, 3], [1, 2, 4], [1, 3, 2], [2, 3, 4]]
     assert spice.pltvol(vrtces, plates) == pytest.approx(1.0/6.0)
 
 
+@spice.tempNaifContext
 def test_polyds():
     result = spice.polyds([1., 3., 0.5, 1., 0.5, -1., 1.], 6, 3, 1)
     npt.assert_array_almost_equal([6.0, 10.0, 23.0, 78.0], result)
 
 
+@spice.tempNaifContext
 def test_pos():
     string = "AN ANT AND AN ELEPHANT        "
     assert spice.pos(string, "AN", 0) == 0
@@ -5276,6 +5640,7 @@ def test_pos():
     assert spice.pos(string, " AN  ", 0) == -1
 
 
+@spice.tempNaifContext
 def test_posr():
     string = "AN ANT AND AN ELEPHANT        "
     assert spice.posr(string, "AN", 29) == 19
@@ -5293,6 +5658,7 @@ def test_posr():
     assert spice.posr(string, " AN  ", 29) == -1
 
 
+@spice.tempNaifContext
 def test_prop2b():
     mu = 398600.45
     r = 1.0e8
@@ -5303,14 +5669,17 @@ def test_prop2b():
     npt.assert_array_almost_equal(state, -1.0 * pvinit, decimal=6)
 
 
+@spice.tempNaifContext
 def test_prsdp():
     assert spice.prsdp("-1. 000") == -1.0
 
 
+@spice.tempNaifContext
 def test_prsint():
     assert spice.prsint("PI") == 3
 
 
+@spice.tempNaifContext
 def test_psv2pl():
     spice.kclear()
     epoch = 'Jan 1 2005'
@@ -5327,6 +5696,7 @@ def test_psv2pl():
     npt.assert_almost_equal(spice.vsep(es_norm, em_norm) * spice.dpr(), 5.0424941, decimal=6)
 
 
+@spice.tempNaifContext
 def test_pxform():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5347,6 +5717,7 @@ def test_pxform():
     npt.assert_array_almost_equal(jstate, expected, decimal=4)
 
 
+@spice.tempNaifContext
 def test_pxfrm2():
     spice.kclear()
     # load kernels
@@ -5385,6 +5756,7 @@ def test_pxfrm2():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_q2m():
     mout = spice.q2m(np.array([0.5, 0.4, 0.3, 0.1]))
     expected = np.array([[0.607843137254902, 0.27450980392156854, 0.7450980392156862],
@@ -5393,6 +5765,7 @@ def test_q2m():
     assert np.array_equal(expected, mout)
 
 
+@spice.tempNaifContext
 def test_qcktrc():
     spice.reset()
     spice.chkin("test")
@@ -5404,6 +5777,7 @@ def test_qcktrc():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_qdq2av():
     angle = [-20.0 * spice.rpd(), 50.0 * spice.rpd(), -60.0 * spice.rpd()]
     m = spice.eul2m(angle[2], angle[1], angle[0], 3, 1, 3)
@@ -5416,6 +5790,7 @@ def test_qdq2av():
     npt.assert_array_almost_equal(av, expav)
 
 
+@spice.tempNaifContext
 def test_qxq():
     qID = [1.0, 0.0, 0.0, 0.0]
     nqID = [-1.0, 0.0, 0.0, 0.0]
@@ -5432,12 +5807,14 @@ def test_qxq():
     npt.assert_array_almost_equal(spice.qxq(qI, qID), qI)
 
 
+@spice.tempNaifContext
 def test_radrec():
     npt.assert_array_almost_equal([1.0, 0.0, 0.0], spice.radrec(1.0, 0.0, 0.0))
     npt.assert_array_almost_equal([0.0, 1.0, 0.0], spice.radrec(1.0, 90.0 * spice.rpd(), 0.0))
     npt.assert_array_almost_equal([0.0, 0.0, 1.0], spice.radrec(1.0, 0.0, 90.0 * spice.rpd()))
 
 
+@spice.tempNaifContext
 def test_rav2xf():
     e = [1.0, 0.0, 0.0]
     rz = [[0.0, 1.0, 0.0],
@@ -5446,6 +5823,7 @@ def test_rav2xf():
     assert spice.rav2xf(rz, e) is not None
 
 
+@spice.tempNaifContext
 def test_raxisa():
     axis = [1.0, 2.0, 3.0]
     angle = 0.1 * spice.twopi()
@@ -5456,6 +5834,7 @@ def test_raxisa():
     npt.assert_array_almost_equal(axout, expectedAngout)
 
 
+@spice.tempNaifContext
 def test_rdtext():
     import datetime
     # Create ISO UTC datetime string using current time
@@ -5521,6 +5900,7 @@ def test_rdtext():
         os.remove(xRDTEXT)  # pragma no cover
 
 
+@spice.tempNaifContext
 def test_reccyl():
     expected1 = np.array([0.0, 0.0, 0.0])
     expected2 = np.array([1.0, 90.0 * spice.rpd(), 0.0])
@@ -5530,6 +5910,7 @@ def test_reccyl():
     npt.assert_array_almost_equal(expected3, spice.reccyl([0.0, -1.0, 0.0]), decimal=7)
 
 
+@spice.tempNaifContext
 def test_recgeo():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5543,6 +5924,7 @@ def test_recgeo():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_reclat():
     expected1 = np.array([1.0, 0.0, 0.0])
     expected2 = np.array([1.0, 90.0 * spice.rpd(), 0.0])
@@ -5552,6 +5934,7 @@ def test_reclat():
     npt.assert_array_almost_equal(expected3, spice.reclat([-1.0, 0.0, 0.0]), decimal=7)
 
 
+@spice.tempNaifContext
 def test_recpgr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5565,6 +5948,7 @@ def test_recpgr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_recrad():
     range1, ra1, dec1 = spice.recrad([1.0, 0.0, 0.0])
     range2, ra2, dec2 = spice.recrad([0.0, 1.0, 0.0])
@@ -5574,11 +5958,13 @@ def test_recrad():
     npt.assert_array_almost_equal([1.0, 0.0, 90 * spice.rpd()], [range3, ra3, dec3])
 
 
+@spice.tempNaifContext
 def test_recsph():
     v1 = np.array([-1.0, 0.0, 0.0])
     assert spice.recsph(v1) == (1.0, np.pi/2, np.pi)
 
 
+@spice.tempNaifContext
 def test_removc():
     cell = spice.cell_char(10, 10)
     items = ["one", "two", "three", "four"]
@@ -5591,6 +5977,7 @@ def test_removc():
     assert expected == [x for x in cell]
 
 
+@spice.tempNaifContext
 def test_removd():
     cell = spice.cell_double(10)
     items = [0.0, 1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0]
@@ -5604,6 +5991,7 @@ def test_removd():
         assert x == y
 
 
+@spice.tempNaifContext
 def test_removi():
     cell = spice.cell_int(10)
     items = [0, 1, 1, 2, 3, 5, 8, 13, 21]
@@ -5617,6 +6005,7 @@ def test_removi():
         assert x == y
 
 
+@spice.tempNaifContext
 def test_reordc():
     array = ["one", "three", "two", "zero"]
     iorder = [3, 0, 2, 1]
@@ -5625,6 +6014,7 @@ def test_reordc():
     with pytest.raises(AssertionError):
         assert outarray == ["zero", "one", "two", "three"]
 
+@spice.tempNaifContext
 def test_reordd():
     array = [1.0, 3.0, 2.0]
     iorder = [0, 2, 1]
@@ -5632,6 +6022,7 @@ def test_reordd():
     npt.assert_array_almost_equal(outarray, [1.0, 2.0, 3.0])
 
 
+@spice.tempNaifContext
 def test_reordi():
     array = [1, 3, 2]
     iorder = [0, 2, 1]
@@ -5639,6 +6030,7 @@ def test_reordi():
     npt.assert_array_almost_equal(outarray, [1, 2, 3])
 
 
+@spice.tempNaifContext
 def test_reordl():
     array = [True, True, False]
     iorder = [0, 2, 1]
@@ -5646,12 +6038,14 @@ def test_reordl():
     npt.assert_array_almost_equal(outarray, [True, False, True])
 
 
+@spice.tempNaifContext
 def test_repmc():
     stringtestone = "The truth is #"
     outstringone = spice.repmc(stringtestone, "#", "SPICE")
     assert outstringone == "The truth is SPICE"
 
 
+@spice.tempNaifContext
 def test_repmct():
     stringtestone = "The value is #"
     outstringone = spice.repmct(stringtestone, '#', 5, 'U')
@@ -5660,12 +6054,14 @@ def test_repmct():
     assert outstringtwo == "The value is five"
 
 
+@spice.tempNaifContext
 def test_repmd():
     stringtestone = "The value is #"
     outstringone = spice.repmd(stringtestone, '#', 5.0e11, 1)
     assert outstringone == "The value is 5.E+11"
 
 
+@spice.tempNaifContext
 def test_repmf():
     stringtestone = "The value is #"
     outstringone = spice.repmf(stringtestone, '#', 5.0e3, 5, 'f')
@@ -5674,12 +6070,14 @@ def test_repmf():
     assert outstringtwo == "The value is -5.20E-09"
 
 
+@spice.tempNaifContext
 def test_repmi():
     stringtest = "The value is <opcode>"
     outstring = spice.repmi(stringtest, "<opcode>", 5)
     assert outstring == "The value is 5"
 
 
+@spice.tempNaifContext
 def test_repmot():
     stringtestone = "The value is #"
     outstringone = spice.repmot(stringtestone, '#', 5, 'U')
@@ -5688,17 +6086,20 @@ def test_repmot():
     assert outstringtwo == "The value is fifth"
 
 
+@spice.tempNaifContext
 def test_reset():
     spice.reset()
     assert not spice.failed()
 
 
+@spice.tempNaifContext
 def test_return_c():
     spice.reset()
     assert not spice.return_c()
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_rotate():
     mout = spice.rotate(spice.pi() / 4, 3)
     mExpected = [[np.sqrt(2) / 2.0, np.sqrt(2) / 2.0, 0.0],
@@ -5707,6 +6108,7 @@ def test_rotate():
     npt.assert_array_almost_equal(mout, mExpected)
 
 
+@spice.tempNaifContext
 def test_rotmat():
     ident = spice.ident()
     expectedR = [[0.0, 0.0, -1.0],
@@ -5716,6 +6118,7 @@ def test_rotmat():
     npt.assert_array_almost_equal(rOut, expectedR)
 
 
+@spice.tempNaifContext
 def test_rotvec():
     vin = [np.sqrt(2), 0.0, 0.0]
     angle = spice.pi() / 4
@@ -5725,10 +6128,12 @@ def test_rotvec():
     npt.assert_array_almost_equal(vout, vExpected)
 
 
+@spice.tempNaifContext
 def test_rpd():
     assert spice.rpd() == np.arccos(-1.0) / 180.0
 
 
+@spice.tempNaifContext
 def test_rquad():
     # solve x^2 + 2x + 3 = 0
     root1, root2 = spice.rquad(1.0, 2.0, 3.0)
@@ -5738,6 +6143,7 @@ def test_rquad():
     npt.assert_array_almost_equal(root2, expectedRootTwo)
 
 
+@spice.tempNaifContext
 def test_saelgv():
     vec1 = [1.0, 1.0, 1.0]
     vec2 = [1.0, -1.0, 1.0]
@@ -5748,6 +6154,7 @@ def test_saelgv():
     npt.assert_array_almost_equal(sminor, expectedSminor)
 
 
+@spice.tempNaifContext
 def test_scard():
     cell = spice.cell_double(10)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -5759,6 +6166,7 @@ def test_scard():
     assert spice.card(cell) == 0
 
 
+@spice.tempNaifContext
 def test_scdecd():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5769,6 +6177,7 @@ def test_scdecd():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sce2c():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5779,6 +6188,7 @@ def test_sce2c():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sce2s():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5789,6 +6199,7 @@ def test_sce2s():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sce2t():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5799,6 +6210,7 @@ def test_sce2t():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_scencd():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5810,6 +6222,7 @@ def test_scencd():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_scencd_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5820,6 +6233,7 @@ def test_scencd_vectorized():
     spice.kclear()
     
     
+@spice.tempNaifContext
 def test_scfmt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5832,6 +6246,7 @@ def test_scfmt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_scpart():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5842,6 +6257,7 @@ def test_scpart():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_scs2e():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5853,6 +6269,7 @@ def test_scs2e():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sct2e():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5863,6 +6280,7 @@ def test_sct2e():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sct2e_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5875,6 +6293,7 @@ def test_sct2e_vectorized():
     spice.kclear()
     
     
+@spice.tempNaifContext
 def test_sctiks():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -5884,6 +6303,7 @@ def test_sctiks():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sdiff():
     # SPICEINT_CELL
     a = spice.cell_int(8)
@@ -5925,6 +6345,7 @@ def test_sdiff():
         spice.sdiff(testCellOne, testCellTwo)
 
 
+@spice.tempNaifContext
 def test_set_c():
     a = spice.cell_int(8)
     b = spice.cell_int(8)
@@ -5947,6 +6368,7 @@ def test_set_c():
     assert not spice.set_c(a, "~", a)
 
 
+@spice.tempNaifContext
 def test_setmsg():
     spice.setmsg("test setmsg")
     spice.sigerr("some error")
@@ -5955,24 +6377,28 @@ def test_setmsg():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_shellc():
     array = ["FEYNMAN", "NEWTON", "EINSTEIN", "GALILEO", "EUCLID", "Galileo"]
     expected = ["EINSTEIN", "EUCLID", "FEYNMAN", "GALILEO", "Galileo", "NEWTON"]
     assert spice.shellc(6, 10, array) == expected
 
 
+@spice.tempNaifContext
 def test_shelld():
     array = [99.0, 33.0, 55.0, 44.0, -77.0, 66.0]
     expected = [-77.0, 33.0, 44.0, 55.0, 66.0, 99.0]
     npt.assert_array_almost_equal(spice.shelld(6, array), expected)
 
 
+@spice.tempNaifContext
 def test_shelli():
     array = [99, 33, 55, 44, -77, 66]
     expected = [-77, 33, 44, 55, 66, 99]
     npt.assert_array_almost_equal(spice.shelli(6, array), expected)
 
 
+@spice.tempNaifContext
 def test_sigerr():
     spice.sigerr("test error")
     message = spice.getmsg("SHORT", 200)
@@ -5980,6 +6406,7 @@ def test_sigerr():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_sincpt():
     spice.kclear()
     # load kernels
@@ -6008,27 +6435,32 @@ def test_sincpt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_size():
     testCellOne = spice.cell_int(8)
     assert spice.size(testCellOne) == 8
 
 
+@spice.tempNaifContext
 def test_spd():
     assert spice.spd() == 86400.0
 
 
+@spice.tempNaifContext
 def test_sphcyl():
     a = np.array(spice.sphcyl(1.4142, np.deg2rad(180.0), np.deg2rad(45.0)))
     b = [0.0, np.deg2rad(45.0), -np.sqrt(2)]
     np.testing.assert_almost_equal(a, b, decimal=4)
 
 
+@spice.tempNaifContext
 def test_sphlat():
     result = np.array(spice.sphlat(1.0, spice.pi(), spice.halfpi()))
     expected = np.array([0.0, spice.halfpi(), -1.0])
     npt.assert_array_almost_equal(result, expected)
 
 
+@spice.tempNaifContext
 def test_sphrec():
     expected1 = np.array([0.0, 0.0, 0.0])
     expected2 = np.array([1.0, 0.0, 0.0])
@@ -6038,6 +6470,7 @@ def test_sphrec():
     npt.assert_array_almost_equal(spice.sphrec(1.0, 180.0 * spice.rpd(), 0.0), expected3)
 
 
+@spice.tempNaifContext
 def test_spk14a():
     discrete_epochs = [100.0, 200.0, 300.0, 400.0]
     cheby_coeffs14 = [150.0, 50.0, 1.0101, 1.0102, 1.0103,
@@ -6081,11 +6514,13 @@ def test_spk14a():
         os.remove(spk14) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spk14bstress():
     for i in range(30):
         test_spk14a()
 
 
+@spice.tempNaifContext
 def test_spk14b():
     # Same as test_spk14a
     discrete_epochs = [100.0, 200.0, 300.0, 400.0]
@@ -6130,6 +6565,7 @@ def test_spk14b():
         os.remove(spk14) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spk14e():
     # Same as test_spk14a
     discrete_epochs = [100.0, 200.0, 300.0, 400.0]
@@ -6174,6 +6610,7 @@ def test_spk14e():
         os.remove(spk14) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkacs():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6190,6 +6627,7 @@ def test_spkacs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkapo():
     spice.kclear()
     MARS = 499
@@ -6207,6 +6645,7 @@ def test_spkapo():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkapp():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6220,6 +6659,7 @@ def test_spkapp():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkaps():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6242,6 +6682,7 @@ def test_spkaps():
     npt.assert_array_almost_equal(state, expectedState, decimal=5)
 
 
+@spice.tempNaifContext
 def test_spkcls():
     # Same as test_spkw02
     SPK2 = os.path.join(cwd, "test2.bsp")
@@ -6268,6 +6709,7 @@ def test_spkcls():
         os.remove(SPK2) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkcov():
     spice.kclear()
     
@@ -6291,6 +6733,7 @@ def test_spkcov():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkcpo():
     spice.kclear()
     spice.furnsh(ExtraKernels.earthStnSpk)
@@ -6309,6 +6752,7 @@ def test_spkcpo():
     npt.assert_array_almost_equal(state, expected_state, decimal=6)
 
 
+@spice.tempNaifContext
 def test_spkcpt():
     spice.kclear()
     spice.furnsh(ExtraKernels.earthStnSpk)
@@ -6327,6 +6771,7 @@ def test_spkcpt():
     npt.assert_array_almost_equal(state, expected_state, decimal=6)
 
 
+@spice.tempNaifContext
 def test_spkcvo():
     spice.kclear()
     spice.furnsh(ExtraKernels.earthStnSpk)
@@ -6346,6 +6791,7 @@ def test_spkcvo():
     npt.assert_array_almost_equal(state, expected_state, decimal=6)
 
 
+@spice.tempNaifContext
 def test_spkcvt():
     spice.kclear()
     spice.furnsh(ExtraKernels.earthStnSpk)
@@ -6365,6 +6811,7 @@ def test_spkcvt():
     npt.assert_array_almost_equal(state, expected_state, decimal=6)
 
 
+@spice.tempNaifContext
 def test_spkez():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6379,6 +6826,7 @@ def test_spkez():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkezp():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6392,6 +6840,7 @@ def test_spkezp():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkezr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6405,6 +6854,7 @@ def test_spkezr():
     npt.assert_array_almost_equal(state, expected_state)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_spkezr_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6419,6 +6869,7 @@ def test_spkezr_vectorized():
     npt.assert_allclose(state, expected_state)
     spice.kclear()
 
+@spice.tempNaifContext
 def test_spkgeo():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6433,6 +6884,7 @@ def test_spkgeo():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkgps():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6446,6 +6898,7 @@ def test_spkgps():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spklef():
     spice.kclear()
     handle = spice.spklef(CoreKernels.spk)
@@ -6454,6 +6907,7 @@ def test_spklef():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkltc():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6471,6 +6925,7 @@ def test_spkltc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkobj():
     # Same as test_spkcov
     spice.kclear()
@@ -6485,6 +6940,7 @@ def test_spkobj():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkopa():
     SPKOPA = os.path.join(cwd, "testspkopa.bsp")
     if spice.exists(SPKOPA):
@@ -6514,6 +6970,7 @@ def test_spkopa():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkopn():
     # Same as test_spkw02
     SPK2 = os.path.join(cwd, "test2.bsp")
@@ -6540,6 +6997,7 @@ def test_spkopn():
         os.remove(SPK2) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkpds():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6552,6 +7010,7 @@ def test_spkpds():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkpos():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6565,6 +7024,7 @@ def test_spkpos():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkpos_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6579,6 +7039,7 @@ def test_spkpos_vectorized():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkpvn():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6592,6 +7053,7 @@ def test_spkpvn():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spksfs():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6602,6 +7064,7 @@ def test_spksfs():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkssb():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6617,6 +7080,7 @@ def test_spkssb():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spksub():
     SPKSUB = os.path.join(cwd, "testspksub.bsp")
     if spice.exists(SPKSUB):
@@ -6638,6 +7102,7 @@ def test_spksub():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkuds():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -6651,6 +7116,7 @@ def test_spkuds():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkuef():
     spice.kclear()
     handle = spice.spklef(CoreKernels.spk)
@@ -6659,6 +7125,7 @@ def test_spkuef():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkw02():
     SPK2 = os.path.join(cwd, "test2.bsp")
     if spice.exists(SPK2):
@@ -6684,6 +7151,7 @@ def test_spkw02():
         os.remove(SPK2) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw03():
     SPK3 = os.path.join(cwd, "test3.bsp")
     if spice.exists(SPK3):
@@ -6712,6 +7180,7 @@ def test_spkw03():
         os.remove(SPK3) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw05():
     SPK5 = os.path.join(cwd, "test5.bsp")
     if spice.exists(SPK5):
@@ -6742,6 +7211,7 @@ def test_spkw05():
         os.remove(SPK5) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw08():
     SPK8 = os.path.join(cwd, "test8.bsp")
     if spice.exists(SPK8):
@@ -6773,6 +7243,7 @@ def test_spkw08():
         os.remove(SPK8) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw09():
     SPK9 = os.path.join(cwd, "test9.bsp")
     if spice.exists(SPK9):
@@ -6803,6 +7274,7 @@ def test_spkw09():
         os.remove(SPK9) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw10():
     SPK10 = os.path.join(cwd, "test10.bsp")
     spice.kclear()
@@ -6848,6 +7320,7 @@ def test_spkw10():
         os.remove(SPK10) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw12():
     SPK12 = os.path.join(cwd, "test12.bsp")
     if spice.exists(SPK12):
@@ -6879,6 +7352,7 @@ def test_spkw12():
         os.remove(SPK12) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw13():
     SPK13 = os.path.join(cwd, "test13.bsp")
     if spice.exists(SPK13):
@@ -6909,6 +7383,7 @@ def test_spkw13():
         os.remove(SPK13) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw15():
     discrete_epochs = [100.0, 900.0]
     spice.kclear()
@@ -6952,6 +7427,7 @@ def test_spkw15():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkw17():
     discrete_epochs = [100.0, 900.0]
     spice.kclear()
@@ -6992,6 +7468,7 @@ def test_spkw17():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_spkw18():
     spice.kclear()
     #
@@ -7036,6 +7513,7 @@ def test_spkw18():
         os.remove(SPK18)  # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_spkw20():
     spice.kclear()
     #
@@ -7068,6 +7546,7 @@ def test_spkw20():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_srfc2s():
     spice.kclear()
     kernel = os.path.join(cwd, 'srfc2s_ex1.tm')
@@ -7094,6 +7573,7 @@ def test_srfc2s():
         os.remove(kernel)  # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_srfcss():
     spice.kclear()
     kernel = os.path.join(cwd, 'srfcss_ex1.tm')
@@ -7120,6 +7600,7 @@ def test_srfcss():
         os.remove(kernel)  # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_srfnrm():
     spice.kclear()
     spice.furnsh(CoreKernels.pck)
@@ -7134,6 +7615,7 @@ def test_srfnrm():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_srfrec():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7143,6 +7625,7 @@ def test_srfrec():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_srfs2c():
     spice.kclear()
     kernel = os.path.join(cwd, 'srfs2c_ex1.tm')
@@ -7172,6 +7655,7 @@ def test_srfs2c():
         os.remove(kernel)  # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_srfscc():
     spice.kclear()
     kernel = os.path.join(cwd, 'srfscc_ex1.tm')
@@ -7200,6 +7684,7 @@ def test_srfscc():
         os.remove(kernel)  # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_srfxpt():
     spice.kclear()
     # load kernels
@@ -7237,6 +7722,7 @@ def test_srfxpt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_ssize():
     cell = spice.cell_double(10)
     assert cell.size == 10
@@ -7244,6 +7730,7 @@ def test_ssize():
     assert cell.size == 5
 
 
+@spice.tempNaifContext
 def test_stelab():
     IDOBS = 399
     IDTARG = 301
@@ -7264,6 +7751,7 @@ def test_stelab():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_stpool():
     spice.kclear()
     kernel = os.path.join(cwd, 'stpool_t.ker')
@@ -7288,6 +7776,7 @@ def test_stpool():
         os.remove(kernel) # pragma: no cover
 
 
+@spice.tempNaifContext
 def test_str2et():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7296,6 +7785,7 @@ def test_str2et():
     npt.assert_almost_equal(et, -87836728.81438904)
     spice.kclear()
     
+@spice.tempNaifContext
 def test_datetime2et():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7314,6 +7804,7 @@ def test_datetime2et():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_subpnt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7351,6 +7842,7 @@ def test_subpnt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_subpt():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7369,6 +7861,7 @@ def test_subpt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_subslr():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7403,6 +7896,7 @@ def test_subslr():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_subsol():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7413,19 +7907,23 @@ def test_subsol():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_sumad():
     assert spice.sumad([1.0, 2.0, 3.0]) == 6.0
 
 
+@spice.tempNaifContext
 def test_sumai():
     assert spice.sumai([1, 2, 3]) == 6
 
 
+@spice.tempNaifContext
 def test_surfnm():
     point = [0.0, 0.0, 3.0]
     npt.assert_array_almost_equal(spice.surfnm(1.0, 2.0, 3.0, point), [0.0, 0.0, 1.0])
 
 
+@spice.tempNaifContext
 def test_surfpt():
     position = [2.0, 0.0, 0.0]
     u = [-1.0, 0.0, 0.0]
@@ -7433,6 +7931,7 @@ def test_surfpt():
     npt.assert_array_almost_equal(point, [1.0, 0.0, 0.0])
 
 
+@spice.tempNaifContext
 def test_surfpv():
     stvrtx = [2.0, 0.0, 0.0, 0.0, 0.0, 3.0]
     stdir = [-1.0, 0.0, 0.0, 0.0, 0.0, 4.0]
@@ -7441,6 +7940,7 @@ def test_surfpv():
     npt.assert_array_almost_equal(expected, stx)
 
 
+@spice.tempNaifContext
 def test_swpool():
     spice.kclear()
     # add TEST_VAR_SWPOOL
@@ -7459,6 +7959,7 @@ def test_swpool():
     assert updated is True
 
 
+@spice.tempNaifContext
 def test_sxform():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7480,6 +7981,7 @@ def test_sxform():
     npt.assert_array_almost_equal(jstate, expected, decimal=4)
 
 
+@spice.tempNaifContext
 def test_sxform_vectorized():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7494,6 +7996,7 @@ def test_sxform_vectorized():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_szpool():
     assert spice.szpool("MAXVAR") == 26003
     assert spice.szpool("MAXLEN") == 32
@@ -7504,6 +8007,7 @@ def test_szpool():
     assert spice.szpool("MAXLIN") == 15000
 
 
+@spice.tempNaifContext
 def test_termpt():
     spice.reset()
     spice.kclear()
@@ -7523,6 +8027,7 @@ def test_termpt():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_timdef():
     spice.kclear()
     LSK = os.path.join(cwd, CoreKernels.currentLSK)
@@ -7544,6 +8049,7 @@ def test_timdef():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_timout():
     sample = 'Thu Oct 1 11:11:11 PDT 1111'
     spice.kclear()
@@ -7556,6 +8062,7 @@ def test_timout():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_timout_vectorized():
     sample = 'Thu Oct 1 11:11:11 PDT 1111'
     lenout = len(sample) + 2
@@ -7573,6 +8080,7 @@ def test_timout_vectorized():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_tipbod():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7582,6 +8090,7 @@ def test_tipbod():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_tisbod():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7591,6 +8100,7 @@ def test_tisbod():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_tkfram():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7604,11 +8114,13 @@ def test_tkfram():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_tkvrsn():
     version = spice.tkvrsn("toolkit")
     assert version == "CSPICE_N0066"
 
 
+@spice.tempNaifContext
 def test_tparse():
     actualOne, errorOne = spice.tparse("1996-12-18T12:28:28")
     assert actualOne == -95815892.0
@@ -7618,17 +8130,20 @@ def test_tparse():
     assert actualThree == -80696491.173
 
 
+@spice.tempNaifContext
 def test_tpictr():
     testString = "10:23 P.M. PDT January 3, 1993"
     pictur, ok, err = spice.tpictr(testString, 80, 80)
     assert pictur == "AP:MN AMPM PDT Month DD, YYYY ::UTC-7"
 
 
+@spice.tempNaifContext
 def test_trace():
     matrix = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     assert spice.trace(matrix) == 3.0
 
 
+@spice.tempNaifContext
 def test_trcdep():
     spice.reset()
     assert spice.trcdep() == 0
@@ -7643,6 +8158,7 @@ def test_trcdep():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_trcnam():
     spice.reset()
     assert spice.trcdep() == 0
@@ -7660,6 +8176,7 @@ def test_trcnam():
 
 
 # test_trcoff() cannot be done anywhere but last
+@spice.tempNaifContext
 def teardown_test_trcoff():
     spice.reset()
     spice.kclear()
@@ -7681,6 +8198,7 @@ def teardown_test_trcoff():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_tsetyr():
     spice.reset()
     # Expand 2-digit year to full year, typically 4-digit
@@ -7713,10 +8231,12 @@ def test_tsetyr():
     spice.reset()
 
 
+@spice.tempNaifContext
 def test_twopi():
     assert spice.twopi() == np.pi * 2
 
 
+@spice.tempNaifContext
 def test_twovec():
     axdef = [1.0, 0.0, 0.0]
     plndef = [0.0, -1.0, 0.0]
@@ -7724,15 +8244,18 @@ def test_twovec():
     npt.assert_array_almost_equal(spice.twovec(axdef, 1, plndef, 2), expected)
 
 
+@spice.tempNaifContext
 def test_tyear():
     assert spice.tyear() == 31556925.9747
 
 
+@spice.tempNaifContext
 def test_ucase():
     assert spice.ucase("hi") == "HI"
     assert spice.ucase("hi", 3) == "HI"
 
 
+@spice.tempNaifContext
 def test_ucrss():
     vec1 = np.array([1.0, 2.0, 3.0])
     vec2 = np.array([6.0, 1.0, 6.0])
@@ -7741,6 +8264,7 @@ def test_ucrss():
     npt.assert_array_almost_equal(expected, outvec)
 
 
+@spice.tempNaifContext
 def test_uddc():
     spice.kclear()
 
@@ -7757,6 +8281,7 @@ def test_uddc():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_uddf():
     spice.kclear()
 
@@ -7774,10 +8299,12 @@ def test_uddf():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_udf():
     assert spice.udf(0.0) == 0.0
 
 
+@spice.tempNaifContext
 def test_union():
     # SPICEINT_CELL
     testCellOne = spice.cell_int(8)
@@ -7819,6 +8346,7 @@ def test_union():
         spice.union(testCellOne, testCellTwo)
 
 
+@spice.tempNaifContext
 def test_unitim():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7828,6 +8356,7 @@ def test_unitim():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_unload():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7852,6 +8381,7 @@ def test_unload():
     assert spice.ktotal("ALL") == 0
 
 
+@spice.tempNaifContext
 def test_unload_emptystring():
     spice.kclear()
     with pytest.raises(spice.stypes.SpiceyError):
@@ -7859,6 +8389,7 @@ def test_unload_emptystring():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_unorm():
     v1 = np.array([5.0, 12.0, 0.0])
     expectedVout = np.array([5.0 / 13.0, 12.0 / 13.0, 0.0])
@@ -7868,6 +8399,7 @@ def test_unorm():
     assert np.array_equal(expectedVout, vout)
 
 
+@spice.tempNaifContext
 def test_unormg():
     v1 = np.array([5.0, 12.0])
     expectedVout = np.array([5.0/13.0, 12.0/13.0])
@@ -7877,6 +8409,7 @@ def test_unormg():
     assert np.array_equal(expectedVout, vout)
 
 
+@spice.tempNaifContext
 def test_utc2et():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -7887,18 +8420,21 @@ def test_utc2et():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_vadd():
     v1 = [1.0, 2.0, 3.0]
     v2 = [4.0, 5.0, 6.0]
     npt.assert_array_almost_equal(spice.vadd(v1, v2), [5.0, 7.0, 9.0])
 
 
+@spice.tempNaifContext
 def test_vaddg():
     v1 = [1.0, 2.0, 3.0]
     v2 = [4.0, 5.0, 6.0]
     npt.assert_array_almost_equal(spice.vaddg(v1, v2, 3), [5.0, 7.0, 9.0])
 
 
+@spice.tempNaifContext
 def test_valid():
     data = np.arange(0, 10)[::-1]
     a = spice.cell_double(20)
@@ -7909,6 +8445,7 @@ def test_valid():
     assert a.is_set() is True
 
 
+@spice.tempNaifContext
 def test_vcrss():
     v1 = np.array([0.0, 1.0, 0.0])
     v2 = np.array([1.0, 0.0, 0.0])
@@ -7917,40 +8454,47 @@ def test_vcrss():
     assert np.array_equal(vout, expected)
 
 
+@spice.tempNaifContext
 def test_vdist():
     v1 = np.array([2.0, 3.0, 0.0])
     v2 = np.array([5.0, 7.0, 12.0])
     assert spice.vdist(v1, v2) == 13.0
 
 
+@spice.tempNaifContext
 def test_vdistg():
     v1 = np.array([2.0, 3.0])
     v2 = np.array([5.0, 7.0])
     assert spice.vdistg(v1, v2, 2) == 5.0
 
 
+@spice.tempNaifContext
 def test_vdot():
     v1 = np.array([1.0, 0.0, -2.0])
     v2 = np.array([2.0, 1.0, -1.0])
     assert spice.vdot(v1, v2) == 4.0
 
 
+@spice.tempNaifContext
 def test_vdotg():
     v1 = np.array([1.0, 0.0])
     v2 = np.array([2.0, 1.0])
     assert spice.vdotg(v1, v2, 2) == 2
 
 
+@spice.tempNaifContext
 def test_vequ():
     v1 = np.ones(3)
     assert np.array_equal(v1, spice.vequ(v1))
 
 
+@spice.tempNaifContext
 def test_vequg():
     v1 = np.ones(4)
     assert np.array_equal(v1, spice.vequg(v1, 4))
 
 
+@spice.tempNaifContext
 def test_vhat():
     v1 = np.array([5.0, 12.0, 0.0])
     expected = np.array([5/13.0, 12/13.0, 0.0])
@@ -7958,6 +8502,7 @@ def test_vhat():
     assert np.array_equal(vout, expected)
 
 
+@spice.tempNaifContext
 def test_vhatg():
     v1 = np.array([5.0, 12.0, 0.0, 0.0])
     expected = np.array([5 / 13.0, 12 / 13.0, 0.0, 0.0])
@@ -7965,6 +8510,7 @@ def test_vhatg():
     assert np.array_equal(vout, expected)
 
 
+@spice.tempNaifContext
 def test_vlcom3():
     vec1 = [1.0, 1.0, 1.0]
     vec2 = [2.0, 2.0, 2.0]
@@ -7974,6 +8520,7 @@ def test_vlcom3():
     npt.assert_array_almost_equal(outvec, expected)
 
 
+@spice.tempNaifContext
 def test_vlcom():
     vec1 = [1.0, 1.0, 1.0]
     vec2 = [2.0, 2.0, 2.0]
@@ -7982,6 +8529,7 @@ def test_vlcom():
     npt.assert_array_almost_equal(outvec, expected)
 
 
+@spice.tempNaifContext
 def test_vlcomg():
     vec1 = [1.0, 1.0]
     vec2 = [2.0, 2.0]
@@ -7990,32 +8538,38 @@ def test_vlcomg():
     npt.assert_array_almost_equal(outvec, expected)
 
 
+@spice.tempNaifContext
 def test_vminug():
     v1 = np.array([1.0, -2.0, 4.0, 0.0])
     expected = np.array([-1.0, 2.0, -4.0, 0.0])
     assert np.array_equal(spice.vminug(v1, 4), expected)
 
 
+@spice.tempNaifContext
 def test_vminus():
     v1 = np.array([1.0, -2.0, 0.0])
     expected = np.array([-1.0, 2.0, 0.0])
     assert np.array_equal(spice.vminus(v1), expected)
 
 
+@spice.tempNaifContext
 def test_vnorm():
     v1 = np.array([1.e0, 2.e0, 2.e0])
     assert spice.vnorm(v1) == 3.e0
 
 
+@spice.tempNaifContext
 def test_vnormg():
     v1 = np.array([3.0, 3.0, 3.0, 3.0])
     assert spice.vnormg(v1, 4) == 6.0
 
 
+@spice.tempNaifContext
 def test_vpack():
     assert np.array_equal(spice.vpack(1.0, 1.0, 1.0), np.ones(3))
 
 
+@spice.tempNaifContext
 def test_vperp():
     v1 = np.array([6.0, 6.0, 6.0])
     v2 = np.array([2.0, 0.0, 0.0])
@@ -8023,6 +8577,7 @@ def test_vperp():
     assert np.array_equal(spice.vperp(v1, v2), expected)
 
 
+@spice.tempNaifContext
 def test_vprjp():
     vec1 = [-5.0, 7.0, 2.2]
     norm = [0.0, 0.0, 1.0]
@@ -8033,6 +8588,7 @@ def test_vprjp():
     npt.assert_array_almost_equal(proj, expected)
 
 
+@spice.tempNaifContext
 def test_vprjpi():
     norm1 = [0.0, 0.0, 1.0]
     norm2 = [1.0, 0.0, 1.0]
@@ -8046,6 +8602,7 @@ def test_vprjpi():
     npt.assert_array_almost_equal(result, expected)
 
 
+@spice.tempNaifContext
 def test_vproj():
     v1 = np.array([6.0, 6.0, 6.0])
     v2 = np.array([2.0, 0.0, 0.0])
@@ -8054,18 +8611,21 @@ def test_vproj():
     assert np.array_equal(expected, vout)
 
 
+@spice.tempNaifContext
 def test_vrel():
     vec1 = [12.3, -4.32, 76.0]
     vec2 = [23.0423, -11.99, -0.10]
     npt.assert_almost_equal(spice.vrel(vec1, vec2), 1.0016370)
 
 
+@spice.tempNaifContext
 def test_vrelg():
     vec1 = [12.3, -4.32, 76.0, 1.87]
     vec2 = [23.0423, -11.99, -0.10, -99.1]
     npt.assert_almost_equal(spice.vrelg(vec1, vec2, 4), 1.2408623)
 
 
+@spice.tempNaifContext
 def test_vrotv():
     v = np.array([1.0, 2.0, 3.0])
     axis = np.array([0.0, 0.0, 1.0])
@@ -8075,30 +8635,35 @@ def test_vrotv():
     np.testing.assert_almost_equal(vout, expected, decimal=7)
 
 
+@spice.tempNaifContext
 def test_vscl():
     v1 = np.array([1.0, -2.0, 0.0])
     expected = np.array([-1.0, 2.0, 0.0])
     assert np.array_equal(spice.vscl(-1.0, v1), expected)
 
 
+@spice.tempNaifContext
 def test_vsclg():
     v1 = np.array([1.0, 2.0, -3.0, 4.0])
     expected = np.zeros(4)
     assert np.array_equal(spice.vsclg(0.0, v1, 4), expected)
 
 
+@spice.tempNaifContext
 def test_vsep():
     v1 = np.array([1.0, 0.0, 0.0])
     v2 = np.array([0.0, 1.0, 0.0])
     assert spice.vsep(v1, v2) == np.pi/2
 
 
+@spice.tempNaifContext
 def test_vsepg():
     v1 = np.array([3.0, 0.0])
     v2 = np.array([-5.0, 0.0])
     assert spice.vsepg(v1, v2, 2) == np.pi
 
 
+@spice.tempNaifContext
 def test_vsub():
     v1 = np.array([1.0, 2.0, 3.0])
     v2 = np.array([4.0, 5.0, 6.0])
@@ -8106,6 +8671,7 @@ def test_vsub():
     assert np.array_equal(spice.vsub(v1, v2), expected)
 
 
+@spice.tempNaifContext
 def test_vsubg():
     v1 = np.array([1.0, 2.0, 3.0, 4.0])
     v2 = np.array([1.0, 1.0, 1.0, 1.0])
@@ -8113,6 +8679,7 @@ def test_vsubg():
     assert np.array_equal(spice.vsubg(v1, v2, 4), expected)
 
 
+@spice.tempNaifContext
 def test_vtmv():
     v1 = np.array([2.0, 4.0, 6.0])
     v2 = np.array([1.0, 1.0, 1.0])
@@ -8120,6 +8687,7 @@ def test_vtmv():
     assert spice.vtmv(v1, matrix, v2) == 4.0
 
 
+@spice.tempNaifContext
 def test_vtmvg():
     v1 = np.array([1.0, 2.0, 3.0])
     v2 = np.array([1.0, 2.0])
@@ -8127,20 +8695,24 @@ def test_vtmvg():
     assert spice.vtmvg(v1, matrix, v2, 3, 2) == 21.0
 
 
+@spice.tempNaifContext
 def test_vupack():
     v1 = np.array([1.0, 2.0, 3.0])
     expected = (1.0, 2.0, 3.0)
     assert spice.vupack(v1) == expected
 
 
+@spice.tempNaifContext
 def test_vzero():
     assert spice.vzero(np.zeros(3))
 
 
+@spice.tempNaifContext
 def test_vzerog():
     assert spice.vzerog(np.zeros(5), 5)
 
 
+@spice.tempNaifContext
 def test_wncard():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8149,6 +8721,7 @@ def test_wncard():
     assert spice.wncard(window) == 3
 
 
+@spice.tempNaifContext
 def test_wncomd():
     window1 = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8161,6 +8734,7 @@ def test_wncomd():
     assert spice.wnfetd(window2, 1) == (11.0, 20.0)
 
 
+@spice.tempNaifContext
 def test_wncond():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8173,6 +8747,7 @@ def test_wncond():
     assert spice.wnfetd(window, 1) == (25.0, 26.0)
 
 
+@spice.tempNaifContext
 def test_wndifd():
     window1 = spice.cell_double(8)
     window2 = spice.cell_double(8)
@@ -8192,6 +8767,7 @@ def test_wndifd():
     assert spice.wnfetd(window3, 3) == (23.0, 27.0)
 
 
+@spice.tempNaifContext
 def test_wnelmd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8204,6 +8780,7 @@ def test_wnelmd():
         assert spice.wnelmd(a, window) == exp
 
 
+@spice.tempNaifContext
 def test_wnexpd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0], [29.0, 29.0]]
@@ -8217,6 +8794,7 @@ def test_wnexpd():
     assert spice.wnfetd(window, 2) == (21.0, 30.0)
 
 
+@spice.tempNaifContext
 def test_wnextd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0], [29.0, 29.0]]
@@ -8231,6 +8809,7 @@ def test_wnextd():
     assert spice.wnfetd(window, 3) == (29.0, 29.0)
 
 
+@spice.tempNaifContext
 def test_wnfetd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8242,6 +8821,7 @@ def test_wnfetd():
     assert spice.wnfetd(window, 2) == (23.0, 27.0)
 
 
+@spice.tempNaifContext
 def test_wnfild():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0], [29.0, 29.0]]
@@ -8255,6 +8835,7 @@ def test_wnfild():
     assert spice.wnfetd(window, 2) == (23.0, 29.0)
 
 
+@spice.tempNaifContext
 def test_wnfltd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0], [29.0, 29.0]]
@@ -8267,6 +8848,7 @@ def test_wnfltd():
     assert spice.wnfetd(window, 1) == (23.0, 27.0)
 
 
+@spice.tempNaifContext
 def test_wnincd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8279,6 +8861,7 @@ def test_wnincd():
         assert spice.wnincd(a[0], a[1], window) == exp
 
 
+@spice.tempNaifContext
 def test_wninsd():
     window = spice.cell_double(8)
     darray = [[1.0, 3.0], [7.0, 11.0], [23.0, 27.0]]
@@ -8288,6 +8871,7 @@ def test_wninsd():
     assert [x for x in window] == [1.0, 3.0, 7.0, 11.0, 23.0, 27.0]
 
 
+@spice.tempNaifContext
 def test_wnintd():
     window1 = spice.cell_double(8)
     window2 = spice.cell_double(8)
@@ -8305,6 +8889,7 @@ def test_wnintd():
     assert spice.wnfetd(window3, 1) == (8.0, 10.0)
 
 
+@spice.tempNaifContext
 def test_wnreld():
     window1 = spice.cell_double(8)
     window2 = spice.cell_double(8)
@@ -8322,6 +8907,7 @@ def test_wnreld():
         assert spice.wnreld(window1, op, window2) == exp
 
 
+@spice.tempNaifContext
 def test_wnsumd():
     window = spice.cell_double(12)
     darray = [[1.0, 3.0], [7.0, 11.0], [18.0, 18.0], [23.0, 27.0], [30.0, 69.0], [72.0, 80.0]]
@@ -8335,6 +8921,7 @@ def test_wnsumd():
     assert longest == 8
 
 
+@spice.tempNaifContext
 def test_wnunid():
     window1 = spice.cell_double(8)
     window2 = spice.cell_double(8)
@@ -8354,6 +8941,7 @@ def test_wnunid():
     assert spice.wnfetd(window3, 3) == (23.0, 27.0)
 
 
+@spice.tempNaifContext
 def test_wnvald():
     window = spice.cell_double(30)
     array = [[0.0, 0.0], [10.0, 12.0], [2.0, 7.0],
@@ -8370,6 +8958,7 @@ def test_wnvald():
     assert spice.wnfetd(result, 4) == (23.0, 29.0)
 
 
+@spice.tempNaifContext
 def test_xf2eul():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -8383,6 +8972,7 @@ def test_xf2eul():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_xf2rav():
     e = [1.0, 0.0, 0.0]
     rz = [[0.0, 1.0, 0.0],
@@ -8394,6 +8984,7 @@ def test_xf2rav():
     npt.assert_array_almost_equal(rz, rz2)
 
 
+@spice.tempNaifContext
 def test_xfmsta():
     spice.kclear()
     spice.furnsh(CoreKernels.testMetaKernel)
@@ -8413,6 +9004,7 @@ def test_xfmsta():
     spice.kclear()
 
 
+@spice.tempNaifContext
 def test_xpose6():
     m1 = [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [0.0, 7.0, 8.0, 9.0, 10.0, 11.0], [0.0, 0.0, 12.0, 13.0, 14.0, 15.0],
           [0.0, 0.0, 0.0, 16.0, 17.0, 18.0], [0.0, 0.0, 0.0, 0.0, 19.0, 20.0], [0.0, 0.0, 0.0, 0.0, 0.0, 21.0]]
@@ -8420,17 +9012,20 @@ def test_xpose6():
     npt.assert_array_almost_equal(spice.xpose6(m1), mout_expected)
 
 
+@spice.tempNaifContext
 def test_xpose():
     m1 = [[1.0, 2.0, 3.0], [0.0, 4.0, 5.0], [0.0, 6.0, 0.0]]
     npt.assert_array_almost_equal(spice.xpose(m1), [[1.0, 0.0, 0.0], [2.0, 4.0, 6.0], [3.0, 5.0, 0.0]])
     npt.assert_array_almost_equal(spice.xpose(np.array(m1)), [[1.0, 0.0, 0.0], [2.0, 4.0, 6.0], [3.0, 5.0, 0.0]])
 
 
+@spice.tempNaifContext
 def test_xposeg():
     m1 = [[1.0, 2.0, 3.0], [0.0, 4.0, 5.0], [0.0, 6.0, 0.0]]
     npt.assert_array_almost_equal(spice.xposeg(m1, 3, 3), [[1.0, 0.0, 0.0], [2.0, 4.0, 6.0], [3.0, 5.0, 0.0]])
     npt.assert_array_almost_equal(spice.xposeg(np.array(m1), 3, 3), [[1.0, 0.0, 0.0], [2.0, 4.0, 6.0], [3.0, 5.0, 0.0]])
 
+@spice.tempNaifContext
 def test_zzdynrot():
     spice.kclear()
     spice.furnsh(ExtraKernels.mroFk)

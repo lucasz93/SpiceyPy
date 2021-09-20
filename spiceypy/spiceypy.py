@@ -211,17 +211,76 @@ def cell_bool(cell_size):
 def cell_time(cell_size):
     return stypes.SPICETIME_CELL(cell_size)
 
-def setNaifContext(naif_context):
-    _naif_context = ctypes.c_void_p(naif_context)
+# ######################################################################################################################
+# CONTEXT
+def setNaifContext(naif_context, init=True):
+    global _naif_context
+    _naif_context = naif_context
 
-    erract("set", 10, "return")
-    errdev("set", 10, "null")
+    if init:
+        erract("set", 10, "return")
+        errdev("set", 10, "null")
+        
+def getNaifContext():
+    global _naif_context
+    return _naif_context
 
+class NaifContext():
+    def __init__(self):
+        self._last_naif_context = None
+        self._naif_context = libspice.cspice_alloc()
+        #if self._naif_context == ctypes.c_void_p(None):
+        #    raise Exception('Failed to allocate NAIF context')
+
+    def __del__(self):
+        libspice.cspice_free(self._naif_context)
+		
+    def __enter__(self):
+        self._last_naif_context = getNaifContext()
+        setNaifContext(self._naif_context)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        setNaifContext(self._last_naif_context, False)
+
+def tempNaifContext(f):
+    """
+    Decorator which creates a temp NAIF context before calling the function.
+
+    :type f: builtins.function
+    :return:
+    :rtype:
+    """
+
+    @functools.wraps(f)
+    def with_errcheck(*args, **kwargs):
+        with NaifContext():
+            return f(*args, **kwargs)
+
+    return with_errcheck
+
+def assertNaifContext(f):
+    """
+    Ensures we have a valid NAIF context before running the function.
+
+    :type f: builtins.function
+    :return:
+    :rtype:
+    """
+
+    @functools.wraps(f)
+    def with_assert(*args, **kwargs):
+        if _naif_context == ctypes.c_void_p(None):
+            raise Exception('No NAIF context!')
+        return f(*args, **kwargs)
+
+    return with_assert
 
 ################################################################################
 # A
 
 @spiceErrorCheck
+@assertNaifContext
 def appndc(item, cell):
     """
     Append an item to a character cell.
@@ -236,13 +295,14 @@ def appndc(item, cell):
     assert isinstance(cell, stypes.SpiceCell)
     if stypes.isiterable(item):
         for c in item:
-            libspice.appndc_c(_naif_context, stypes.stringToCharP(c), cell)
+            libspice.appndc_c(getNaifContext(), stypes.stringToCharP(c), cell)
     else:
         item = stypes.stringToCharP(item)
-        libspice.appndc_c(_naif_context, item, cell)
+        libspice.appndc_c(getNaifContext(), item, cell)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def appndd(item, cell):
     """
     Append an item to a double precision cell.
@@ -257,13 +317,14 @@ def appndd(item, cell):
     assert isinstance(cell, stypes.SpiceCell)
     if hasattr(item, "__iter__"):
         for d in item:
-            libspice.appndd_c(_naif_context, ctypes.c_double(d), cell)
+            libspice.appndd_c(getNaifContext(), ctypes.c_double(d), cell)
     else:
         item = ctypes.c_double(item)
-        libspice.appndd_c(_naif_context, item, cell)
+        libspice.appndd_c(getNaifContext(), item, cell)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def appndi(item, cell):
     """
     Append an item to an integer cell.
@@ -278,13 +339,14 @@ def appndi(item, cell):
     assert isinstance(cell, stypes.SpiceCell)
     if hasattr(item, "__iter__"):
         for i in item:
-            libspice.appndi_c(_naif_context, ctypes.c_int(i), cell)
+            libspice.appndi_c(getNaifContext(), ctypes.c_int(i), cell)
     else:
         item = ctypes.c_int(item)
-        libspice.appndi_c(_naif_context, item, cell)
+        libspice.appndi_c(getNaifContext(), item, cell)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def axisar(axis, angle):
     """
     Construct a rotation matrix that rotates vectors by a specified
@@ -302,7 +364,7 @@ def axisar(axis, angle):
     axis = stypes.toDoubleVector(axis)
     angle = ctypes.c_double(angle)
     r = stypes.emptyDoubleMatrix()
-    libspice.axisar_c(_naif_context, axis, angle, r)
+    libspice.axisar_c(getNaifContext(), axis, angle, r)
     return stypes.cMatrixToNumpy(r)
 
 
@@ -310,6 +372,7 @@ def axisar(axis, angle):
 # B
 
 @spiceErrorCheck
+@assertNaifContext
 def b1900():
     """
     Return the Julian Date corresponding to Besselian Date 1900.0.
@@ -319,10 +382,11 @@ def b1900():
     :return: The Julian Date corresponding to Besselian Date 1900.0.
     :rtype: float
     """
-    return libspice.b1900_c(_naif_context)
+    return libspice.b1900_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def b1950():
     """
     Return the Julian Date corresponding to Besselian Date 1950.0.
@@ -332,10 +396,11 @@ def b1950():
     :return: The Julian Date corresponding to Besselian Date 1950.0.
     :rtype: float
     """
-    return libspice.b1950_c(_naif_context)
+    return libspice.b1950_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def badkpv(caller, name, comp, insize, divby, intype):
     """
     Determine if a kernel pool variable is present and if so
@@ -364,10 +429,11 @@ def badkpv(caller, name, comp, insize, divby, intype):
     insize = ctypes.c_int(insize)
     divby = ctypes.c_int(divby)
     intype = ctypes.c_char(intype.encode(encoding='UTF-8'))
-    return bool(libspice.badkpv_c(_naif_context, caller, name, comp, insize, divby, intype))
+    return bool(libspice.badkpv_c(getNaifContext(), caller, name, comp, insize, divby, intype))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bltfrm(frmcls, outCell=None):
     """
     Return a SPICE set containing the frame IDs of all built-in frames
@@ -385,12 +451,13 @@ def bltfrm(frmcls, outCell=None):
     frmcls = ctypes.c_int(frmcls)
     if not outCell:
         outCell = stypes.SPICEINT_CELL(1000)
-    libspice.bltfrm_c(_naif_context, frmcls, outCell)
+    libspice.bltfrm_c(getNaifContext(), frmcls, outCell)
     return outCell
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def bodc2n(code, lenout=_default_len_out):
     """
     Translate the SPICE integer code of a body into a common name
@@ -409,11 +476,12 @@ def bodc2n(code, lenout=_default_len_out):
     name = stypes.stringToCharP(" " * lenout)
     lenout = ctypes.c_int(lenout)
     found = ctypes.c_int()
-    libspice.bodc2n_c(_naif_context, code, lenout, name, ctypes.byref(found))
+    libspice.bodc2n_c(getNaifContext(), code, lenout, name, ctypes.byref(found))
     return stypes.toPythonString(name), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bodc2s(code, lenout=_default_len_out):
     """
     Translate a body ID code to either the corresponding name or if no
@@ -432,11 +500,12 @@ def bodc2s(code, lenout=_default_len_out):
     code = ctypes.c_int(code)
     name = stypes.stringToCharP(" " * lenout)
     lenout = ctypes.c_int(lenout)
-    libspice.bodc2s_c(_naif_context, code, lenout, name)
+    libspice.bodc2s_c(getNaifContext(), code, lenout, name)
     return stypes.toPythonString(name)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def boddef(name, code):
     """
     Define a body name/ID code pair for later translation via
@@ -451,10 +520,11 @@ def boddef(name, code):
     """
     name = stypes.stringToCharP(name)
     code = ctypes.c_int(code)
-    libspice.boddef_c(_naif_context, name, code)
+    libspice.boddef_c(getNaifContext(), name, code)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bodfnd(body, item):
     """
     Determine whether values exist for some item for any body
@@ -471,11 +541,12 @@ def bodfnd(body, item):
     """
     body = ctypes.c_int(body)
     item = stypes.stringToCharP(item)
-    return bool(libspice.bodfnd_c(_naif_context, body, item))
+    return bool(libspice.bodfnd_c(getNaifContext(), body, item))
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def bodn2c(name):
     """
     Translate the name of a body or object to the corresponding SPICE
@@ -491,12 +562,13 @@ def bodn2c(name):
     name = stypes.stringToCharP(name)
     code = ctypes.c_int(0)
     found = ctypes.c_int(0)
-    libspice.bodn2c_c(_naif_context, name, ctypes.byref(code), ctypes.byref(found))
+    libspice.bodn2c_c(getNaifContext(), name, ctypes.byref(code), ctypes.byref(found))
     return code.value, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def bods2c(name):
     """
     Translate a string containing a body name or ID code to an integer code.
@@ -511,11 +583,12 @@ def bods2c(name):
     name = stypes.stringToCharP(name)
     code = ctypes.c_int(0)
     found = ctypes.c_int(0)
-    libspice.bods2c_c(_naif_context, name, ctypes.byref(code), ctypes.byref(found))
+    libspice.bods2c_c(getNaifContext(), name, ctypes.byref(code), ctypes.byref(found))
     return code.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bodvar(body, item, dim):
     """
     Deprecated: This routine has been superseded by :func:`bodvcd` and
@@ -541,11 +614,12 @@ def bodvar(body, item, dim):
     dim = ctypes.c_int(dim)
     item = stypes.stringToCharP(item)
     values = stypes.emptyDoubleVector(dim.value)
-    libspice.bodvar_c(_naif_context, body, item, ctypes.byref(dim), values)
+    libspice.bodvar_c(getNaifContext(), body, item, ctypes.byref(dim), values)
     return stypes.cVectorToPython(values)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bodvcd(bodyid, item, maxn):
     """
     Fetch from the kernel pool the double precision values of an item
@@ -570,11 +644,12 @@ def bodvcd(bodyid, item, maxn):
     dim = ctypes.c_int()
     values = stypes.emptyDoubleVector(maxn)
     maxn = ctypes.c_int(maxn)
-    libspice.bodvcd_c(_naif_context, bodyid, item, maxn, ctypes.byref(dim), values)
+    libspice.bodvcd_c(getNaifContext(), bodyid, item, maxn, ctypes.byref(dim), values)
     return dim.value, stypes.cVectorToPython(values)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bodvrd(bodynm, item, maxn):
     """
     Fetch from the kernel pool the double precision values
@@ -598,11 +673,12 @@ def bodvrd(bodynm, item, maxn):
     dim = ctypes.c_int()
     values = stypes.emptyDoubleVector(maxn)
     maxn = ctypes.c_int(maxn)
-    libspice.bodvrd_c(_naif_context, bodynm, item, maxn, ctypes.byref(dim), values)
+    libspice.bodvrd_c(getNaifContext(), bodynm, item, maxn, ctypes.byref(dim), values)
     return dim.value, stypes.cVectorToPython(values)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def brcktd(number, end1, end2):
     """
     Bracket a number. That is, given a number and an acceptable
@@ -624,10 +700,11 @@ def brcktd(number, end1, end2):
     number = ctypes.c_double(number)
     end1 = ctypes.c_double(end1)
     end2 = ctypes.c_double(end2)
-    return libspice.brcktd_c(_naif_context, number, end1, end2)
+    return libspice.brcktd_c(getNaifContext(), number, end1, end2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def brckti(number, end1, end2):
     """
     Bracket a number. That is, given a number and an acceptable
@@ -649,10 +726,11 @@ def brckti(number, end1, end2):
     number = ctypes.c_int(number)
     end1 = ctypes.c_int(end1)
     end2 = ctypes.c_int(end2)
-    return libspice.brckti_c(_naif_context, number, end1, end2)
+    return libspice.brckti_c(getNaifContext(), number, end1, end2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bschoc(value, ndim, lenvals, array, order):
     """
     Do a binary search for a given value within a character string array,
@@ -679,10 +757,11 @@ def bschoc(value, ndim, lenvals, array, order):
     lenvals = ctypes.c_int(lenvals)
     array = stypes.listToCharArrayPtr(array, xLen=lenvals, yLen=ndim)
     order = stypes.toIntVector(order)
-    return libspice.bschoc_c(_naif_context, value, ndim, lenvals, array, order)
+    return libspice.bschoc_c(getNaifContext(), value, ndim, lenvals, array, order)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bschoi(value, ndim, array, order):
     """
     Do a binary search for a given value within an integer array,
@@ -706,10 +785,11 @@ def bschoi(value, ndim, array, order):
     ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
     order = stypes.toIntVector(order)
-    return libspice.bschoi_c(_naif_context, value, ndim, array, order)
+    return libspice.bschoi_c(getNaifContext(), value, ndim, array, order)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bsrchc(value, ndim, lenvals, array):
     """
     Do a binary earch for a given value within a character string array.
@@ -733,10 +813,11 @@ def bsrchc(value, ndim, lenvals, array):
     ndim = ctypes.c_int(ndim)
     lenvals = ctypes.c_int(lenvals)
     array = stypes.listToCharArrayPtr(array, xLen=lenvals, yLen=ndim)
-    return libspice.bsrchc_c(_naif_context, value, ndim, lenvals, array)
+    return libspice.bsrchc_c(getNaifContext(), value, ndim, lenvals, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bsrchd(value, ndim, array):
     """
     Do a binary search for a key value within a double precision array,
@@ -757,10 +838,11 @@ def bsrchd(value, ndim, array):
     value = ctypes.c_double(value)
     ndim = ctypes.c_int(ndim)
     array = stypes.toDoubleVector(array)
-    return libspice.bsrchd_c(_naif_context, value, ndim, array)
+    return libspice.bsrchd_c(getNaifContext(), value, ndim, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def bsrchi(value, ndim, array):
     """
     Do a binary search for a key value within an integer array,
@@ -781,13 +863,14 @@ def bsrchi(value, ndim, array):
     value = ctypes.c_int(value)
     ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
-    return libspice.bsrchi_c(_naif_context, value, ndim, array)
+    return libspice.bsrchi_c(getNaifContext(), value, ndim, array)
 
 
 ################################################################################
 # C
 
 @spiceErrorCheck
+@assertNaifContext
 def card(cell):
     """
     Return the cardinality (current number of elements) in a
@@ -800,11 +883,12 @@ def card(cell):
     :return: the number of elements in a cell of any data type.
     :rtype: int
     """
-    return libspice.card_c(_naif_context, ctypes.byref(cell))
+    return libspice.card_c(getNaifContext(), ctypes.byref(cell))
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ccifrm(frclss, clssid, lenout=_default_len_out):
     """
     Return the frame name, frame ID, and center associated with
@@ -831,13 +915,14 @@ def ccifrm(frclss, clssid, lenout=_default_len_out):
     frname = stypes.stringToCharP(lenout)
     center = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.ccifrm_c(_naif_context, frclss, clssid, lenout, ctypes.byref(frcode), frname,
+    libspice.ccifrm_c(getNaifContext(), frclss, clssid, lenout, ctypes.byref(frcode), frname,
                       ctypes.byref(center), ctypes.byref(found))
     return frcode.value, stypes.toPythonString(
         frname), center.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cgv2el(center, vec1, vec2):
     """
     Form a SPICE ellipse from a center vector and two generating vectors.
@@ -857,10 +942,11 @@ def cgv2el(center, vec1, vec2):
     vec1 = stypes.toDoubleVector(vec1)
     vec2 = stypes.toDoubleVector(vec2)
     ellipse = stypes.Ellipse()
-    libspice.cgv2el_c(_naif_context, center, vec1, vec2, ctypes.byref(ellipse))
+    libspice.cgv2el_c(getNaifContext(), center, vec1, vec2, ctypes.byref(ellipse))
     return ellipse
 
 @spiceErrorCheck
+@assertNaifContext
 def chbder(cp, degp, x2s, x, nderiv):
     """
     Given the coefficients for the Chebyshev expansion of a
@@ -889,11 +975,12 @@ def chbder(cp, degp, x2s, x, nderiv):
     partdp = stypes.emptyDoubleVector(3*(nderiv+1))
     dpdxs = stypes.emptyDoubleVector(nderiv+1)
     nderiv = ctypes.c_int(nderiv)
-    libspice.chbder_c(_naif_context, cp, degp, x2s, x, nderiv, partdp, dpdxs)
+    libspice.chbder_c(getNaifContext(), cp, degp, x2s, x, nderiv, partdp, dpdxs)
     return stypes.cVectorToPython(dpdxs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def chkin(module):
     """
     Inform the SPICE error handling mechanism of entry into a routine.
@@ -904,10 +991,11 @@ def chkin(module):
     :type module: str
     """
     module = stypes.stringToCharP(module)
-    libspice.chkin_c(_naif_context, module)
+    libspice.chkin_c(getNaifContext(), module)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def chkout(module):
     """
     Inform the SPICE error handling mechanism of exit from a routine.
@@ -918,11 +1006,12 @@ def chkout(module):
     :type module: str
     """
     module = stypes.stringToCharP(module)
-    libspice.chkout_c(_naif_context, module)
+    libspice.chkout_c(getNaifContext(), module)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def cidfrm(cent, lenout=_default_len_out):
     """
     Retrieve frame ID code and name to associate with a frame center.
@@ -943,12 +1032,13 @@ def cidfrm(cent, lenout=_default_len_out):
     frcode = ctypes.c_int()
     frname = stypes.stringToCharP(lenout)
     found = ctypes.c_int()
-    libspice.cidfrm_c(_naif_context, cent, lenout, ctypes.byref(frcode), frname,
+    libspice.cidfrm_c(getNaifContext(), cent, lenout, ctypes.byref(frcode), frname,
                       ctypes.byref(found))
     return frcode.value, stypes.toPythonString(frname), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckcls(handle):
     """
     Close an open CK file.
@@ -959,10 +1049,11 @@ def ckcls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.ckcls_c(_naif_context, handle)
+    libspice.ckcls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckcov(ck, idcode, needav, level, tol, timsys, cover=None):
     """
     Find the coverage window for a specified object in a specified CK file.
@@ -996,13 +1087,14 @@ def ckcov(ck, idcode, needav, level, tol, timsys, cover=None):
         cover = stypes.SPICEDOUBLE_CELL(20000)
     assert isinstance(cover, stypes.SpiceCell)
     assert cover.dtype == 1
-    libspice.ckcov_c(_naif_context, ck, idcode, needav, level, tol, timsys,
+    libspice.ckcov_c(getNaifContext(), ck, idcode, needav, level, tol, timsys,
                      ctypes.byref(cover))
     return cover
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ckfrot(inst, et):
     """
     Find the rotation from a C-kernel Id to the native
@@ -1022,12 +1114,13 @@ def ckfrot(inst, et):
     rotate = stypes.emptyDoubleMatrix(x=3, y=3)
     ref = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.ckfrot_(_naif_context, ctypes.byref(inst), ctypes.byref(et), rotate, ctypes.byref(ref), ctypes.byref(found))
+    libspice.ckfrot_(getNaifContext(), ctypes.byref(inst), ctypes.byref(et), rotate, ctypes.byref(ref), ctypes.byref(found))
     return stypes.cMatrixToNumpy(rotate), ref.value, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ckgp(inst, sclkdp, tol, ref):
     """
     Get pointing (attitude) for a specified spacecraft clock time.
@@ -1054,13 +1147,14 @@ def ckgp(inst, sclkdp, tol, ref):
     cmat = stypes.emptyDoubleMatrix()
     clkout = ctypes.c_double()
     found = ctypes.c_int()
-    libspice.ckgp_c(_naif_context, inst, sclkdp, tol, ref, cmat, ctypes.byref(clkout),
+    libspice.ckgp_c(getNaifContext(), inst, sclkdp, tol, ref, cmat, ctypes.byref(clkout),
                     ctypes.byref(found))
     return stypes.cMatrixToNumpy(cmat), clkout.value, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ckgpav(inst, sclkdp, tol, ref):
     """
     Get pointing (attitude) and angular velocity
@@ -1090,13 +1184,14 @@ def ckgpav(inst, sclkdp, tol, ref):
     av = stypes.emptyDoubleVector(3)
     clkout = ctypes.c_double()
     found = ctypes.c_int()
-    libspice.ckgpav_c(_naif_context, inst, sclkdp, tol, ref, cmat, av, ctypes.byref(clkout),
+    libspice.ckgpav_c(getNaifContext(), inst, sclkdp, tol, ref, cmat, av, ctypes.byref(clkout),
                       ctypes.byref(found))
     return stypes.cMatrixToNumpy(cmat), stypes.cVectorToPython(
             av), clkout.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cklpf(filename):
     """
     Load a CK pointing file for use by the CK readers.  Return that
@@ -1112,11 +1207,12 @@ def cklpf(filename):
     """
     filename = stypes.stringToCharP(filename)
     handle = ctypes.c_int()
-    libspice.cklpf_c(_naif_context, filename, ctypes.byref(handle))
+    libspice.cklpf_c(getNaifContext(), filename, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckobj(ck, outCell=None):
     """
     Find the set of ID codes of all objects in a specified CK file.
@@ -1136,11 +1232,12 @@ def ckobj(ck, outCell=None):
         outCell = stypes.SPICEINT_CELL(1000)
     assert isinstance(outCell, stypes.SpiceCell)
     assert outCell.dtype == 2
-    libspice.ckobj_c(_naif_context, ck, ctypes.byref(outCell))
+    libspice.ckobj_c(getNaifContext(), ck, ctypes.byref(outCell))
     return outCell
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckopn(filename, ifname, ncomch):
     """
     Open a new CK file, returning the handle of the opened file.
@@ -1160,11 +1257,12 @@ def ckopn(filename, ifname, ncomch):
     ifname = stypes.stringToCharP(ifname)
     ncomch = ctypes.c_int(ncomch)
     handle = ctypes.c_int()
-    libspice.ckopn_c(_naif_context, filename, ifname, ncomch, ctypes.byref(handle))
+    libspice.ckopn_c(getNaifContext(), filename, ifname, ncomch, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckupf(handle):
     """
     Unload a CK pointing file so that it will no longer be searched
@@ -1176,10 +1274,11 @@ def ckupf(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.ckupf_c(_naif_context, handle)
+    libspice.ckupf_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckw01(handle, begtim, endtim, inst, ref, avflag, segid, nrec, sclkdp, quats,
           avvs):
     """
@@ -1221,11 +1320,12 @@ def ckw01(handle, begtim, endtim, inst, ref, avflag, segid, nrec, sclkdp, quats,
     quats = stypes.toDoubleMatrix(quats)
     avvs = stypes.toDoubleMatrix(avvs)
     nrec = ctypes.c_int(nrec)
-    libspice.ckw01_c(_naif_context, handle, begtim, endtim, inst, ref, avflag, segid, nrec,
+    libspice.ckw01_c(getNaifContext(), handle, begtim, endtim, inst, ref, avflag, segid, nrec,
                      sclkdp, quats, avvs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckw02(handle, begtim, endtim, inst, ref, segid, nrec, start, stop, quats,
           avvs, rates):
     """
@@ -1270,11 +1370,12 @@ def ckw02(handle, begtim, endtim, inst, ref, segid, nrec, start, stop, quats,
     quats = stypes.toDoubleMatrix(quats)
     avvs = stypes.toDoubleMatrix(avvs)
     nrec = ctypes.c_int(nrec)
-    libspice.ckw02_c(_naif_context, handle, begtim, endtim, inst, ref, segid, nrec, start,
+    libspice.ckw02_c(getNaifContext(), handle, begtim, endtim, inst, ref, segid, nrec, start,
                      stop, quats, avvs, rates)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckw03(handle, begtim, endtim, inst, ref, avflag, segid, nrec, sclkdp, quats,
           avvs, nints, starts):
     """
@@ -1322,11 +1423,12 @@ def ckw03(handle, begtim, endtim, inst, ref, avflag, segid, nrec, sclkdp, quats,
     nrec = ctypes.c_int(nrec)
     starts = stypes.toDoubleVector(starts)
     nints = ctypes.c_int(nints)
-    libspice.ckw03_c(_naif_context, handle, begtim, endtim, inst, ref, avflag, segid, nrec,
+    libspice.ckw03_c(getNaifContext(), handle, begtim, endtim, inst, ref, avflag, segid, nrec,
                      sclkdp, quats, avvs, nints, starts)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ckw05(handle, subtype, degree, begtim, endtim, inst, ref, avflag, segid,
           sclkdp, packts, rate, nints, starts):
     """
@@ -1378,15 +1480,17 @@ def ckw05(handle, subtype, degree, begtim, endtim, inst, ref, avflag, segid,
     rate    = ctypes.c_double(rate)
     nints   = ctypes.c_int(nints)
     starts  = stypes.toDoubleVector(starts)
-    libspice.ckw05_c(_naif_context, handle, subtype, degree, begtim, endtim, inst, ref, avflag,
+    libspice.ckw05_c(getNaifContext(), handle, subtype, degree, begtim, endtim, inst, ref, avflag,
                      segid, n, sclkdp, packts, rate, nints, starts)
 
 
+@assertNaifContext
 def cleard():
     raise NotImplementedError
 
 
 @spiceErrorCheck
+@assertNaifContext
 def clight():
     """
     Return the speed of light in a vacuum (IAU official value, in km/sec).
@@ -1396,10 +1500,11 @@ def clight():
     :return: The function returns the speed of light in vacuum (km/sec).
     :rtype: float
     """
-    return libspice.clight_c(_naif_context)
+    return libspice.clight_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def clpool():
     """
     Remove all variables from the kernel pool. Watches
@@ -1407,10 +1512,11 @@ def clpool():
 
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/clpool_c.html
     """
-    libspice.clpool_c(_naif_context)
+    libspice.clpool_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cltext(fname):
     """
     Internal undocumented command for closing a text file opened by RDTEXT.
@@ -1437,10 +1543,11 @@ def cltext(fname):
     """
     fnameP    = stypes.stringToCharP(fname)
     fname_len = ctypes.c_int(len(fname))
-    libspice.cltext_(_naif_context, fnameP, fname_len)
+    libspice.cltext_(getNaifContext(), fnameP, fname_len)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cmprss(delim, n, instr, lenout=_default_len_out):
     """
     Compress a character string by removing occurrences of
@@ -1464,12 +1571,13 @@ def cmprss(delim, n, instr, lenout=_default_len_out):
     n = ctypes.c_int(n)
     instr = stypes.stringToCharP(instr)
     output = stypes.stringToCharP(lenout)
-    libspice.cmprss_c(_naif_context, delim, n, instr, lenout, output)
+    libspice.cmprss_c(getNaifContext(), delim, n, instr, lenout, output)
     return stypes.toPythonString(output)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def cnmfrm(cname, lenout=_default_len_out):
     """
     Retrieve frame ID code and name to associate with an object.
@@ -1490,12 +1598,13 @@ def cnmfrm(cname, lenout=_default_len_out):
     cname = stypes.stringToCharP(cname)
     found = ctypes.c_int()
     frcode = ctypes.c_int()
-    libspice.cnmfrm_c(_naif_context, cname, lenout, ctypes.byref(frcode), frname,
+    libspice.cnmfrm_c(getNaifContext(), cname, lenout, ctypes.byref(frcode), frname,
                       ctypes.byref(found))
     return frcode.value, stypes.toPythonString(frname), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def conics(elts, et):
     """
     Determine the state (position, velocity) of an orbiting body
@@ -1514,11 +1623,12 @@ def conics(elts, et):
     elts = stypes.toDoubleVector(elts)
     et = ctypes.c_double(et)
     state = stypes.emptyDoubleVector(6)
-    libspice.conics_c(_naif_context, elts, et, state)
+    libspice.conics_c(getNaifContext(), elts, et, state)
     return stypes.cVectorToPython(state)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def convrt(x, inunit, outunit):
     """
     Take a measurement X, the units associated with
@@ -1543,16 +1653,17 @@ def convrt(x, inunit, outunit):
     if hasattr(x, "__iter__"):
         outArray=[]
         for n in x:
-            libspice.convrt_c(_naif_context, n, inunit, outunit, ctypes.byref(y))
+            libspice.convrt_c(getNaifContext(), n, inunit, outunit, ctypes.byref(y))
             checkForSpiceError(None)
             outArray.append(y.value)
         return outArray
     x = ctypes.c_double(x)
-    libspice.convrt_c(_naif_context, x, inunit, outunit, ctypes.byref(y))
+    libspice.convrt_c(getNaifContext(), x, inunit, outunit, ctypes.byref(y))
     return y.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def copy(cell):
     """
     Copy the contents of a SpiceCell of any data type to another
@@ -1576,11 +1687,12 @@ def copy(cell):
         newcopy = stypes.SPICEINT_CELL(cell.size)
     else:
         raise NotImplementedError
-    libspice.copy_c(_naif_context, ctypes.byref(cell), ctypes.byref(newcopy))
+    libspice.copy_c(getNaifContext(), ctypes.byref(cell), ctypes.byref(newcopy))
     return newcopy
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cpos(string, chars, start):
     """
     Find the first occurrence in a string of a character belonging
@@ -1603,10 +1715,11 @@ def cpos(string, chars, start):
     string = stypes.stringToCharP(string)
     chars = stypes.stringToCharP(chars)
     start = ctypes.c_int(start)
-    return libspice.cpos_c(_naif_context, string, chars, start)
+    return libspice.cpos_c(getNaifContext(), string, chars, start)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cposr(string, chars, start):
     """
     Find the first occurrence in a string of a character belonging
@@ -1629,10 +1742,11 @@ def cposr(string, chars, start):
     string = stypes.stringToCharP(string)
     chars = stypes.stringToCharP(chars)
     start = ctypes.c_int(start)
-    return libspice.cposr_c(_naif_context, string, chars, start)
+    return libspice.cposr_c(getNaifContext(), string, chars, start)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cvpool(agent):
     """
     Indicate whether or not any watched kernel variables that have a
@@ -1647,11 +1761,12 @@ def cvpool(agent):
     """
     agent = stypes.stringToCharP(agent)
     update = ctypes.c_int()
-    libspice.cvpool_c(_naif_context, agent, ctypes.byref(update))
+    libspice.cvpool_c(getNaifContext(), agent, ctypes.byref(update))
     return bool(update.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cyllat(r, lonc, z):
     """
     Convert from cylindrical to latitudinal coordinates.
@@ -1673,12 +1788,13 @@ def cyllat(r, lonc, z):
     radius = ctypes.c_double()
     lon = ctypes.c_double()
     lat = ctypes.c_double()
-    libspice.cyllat_c(_naif_context, r, lonc, z, ctypes.byref(radius), ctypes.byref(lon),
+    libspice.cyllat_c(getNaifContext(), r, lonc, z, ctypes.byref(radius), ctypes.byref(lon),
                       ctypes.byref(lat))
     return radius.value, lon.value, lat.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cylrec(r, lon, z):
     """
     Convert from cylindrical to rectangular coordinates.
@@ -1698,11 +1814,12 @@ def cylrec(r, lon, z):
     lon = ctypes.c_double(lon)
     z = ctypes.c_double(z)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.cylrec_c(_naif_context, r, lon, z, rectan)
+    libspice.cylrec_c(getNaifContext(), r, lon, z, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def cylsph(r, lonc, z):
     """
     Convert from cylindrical to spherical coordinates.
@@ -1727,7 +1844,7 @@ def cylsph(r, lonc, z):
     radius = ctypes.c_double()
     colat = ctypes.c_double()
     lon = ctypes.c_double()
-    libspice.cyllat_c(_naif_context, r, lonc, z, ctypes.byref(radius), ctypes.byref(colat),
+    libspice.cyllat_c(getNaifContext(), r, lonc, z, ctypes.byref(radius), ctypes.byref(colat),
                       ctypes.byref(lon))
     return radius.value, colat.value, lon.value
 
@@ -1736,6 +1853,7 @@ def cylsph(r, lonc, z):
 # D
 
 @spiceErrorCheck
+@assertNaifContext
 def dafac(handle, buffer):
     """
     Add comments from a buffer of character strings to the comment
@@ -1753,10 +1871,11 @@ def dafac(handle, buffer):
     lenvals = ctypes.c_int(len(max(buffer, key=len)) + 1)
     n       = ctypes.c_int(len(buffer))
     buffer  = stypes.listToCharArrayPtr(buffer)
-    libspice.dafac_c(_naif_context, handle, n, lenvals, buffer)
+    libspice.dafac_c(getNaifContext(), handle, n, lenvals, buffer)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafbbs(handle):
     """
     Begin a backward search for arrays in a DAF.
@@ -1767,10 +1886,11 @@ def dafbbs(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dafbbs_c(_naif_context, handle)
+    libspice.dafbbs_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafbfs(handle):
     """
     Begin a forward search for arrays in a DAF.
@@ -1781,10 +1901,11 @@ def dafbfs(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dafbfs_c(_naif_context, handle)
+    libspice.dafbfs_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafcls(handle):
     """
     Close the DAF associated with a given handle.
@@ -1795,10 +1916,11 @@ def dafcls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dafcls_c(_naif_context, handle)
+    libspice.dafcls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafcs(handle):
     """
     Select a DAF that already has a search in progress as the
@@ -1810,10 +1932,11 @@ def dafcs(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dafcs_c(_naif_context, handle)
+    libspice.dafcs_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafdc(handle):
     """
     Delete the entire comment area of a specified DAF file.
@@ -1824,10 +1947,11 @@ def dafdc(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dafdc_c(_naif_context, handle)
+    libspice.dafdc_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafec(handle, bufsiz, lenout=_default_len_out):
     """
     Extract comments from the comment area of a binary DAF.
@@ -1852,12 +1976,13 @@ def dafec(handle, bufsiz, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     n = ctypes.c_int()
     done = ctypes.c_int()
-    libspice.dafec_c(_naif_context, handle, bufsiz, lenout, ctypes.byref(n),
+    libspice.dafec_c(getNaifContext(), handle, bufsiz, lenout, ctypes.byref(n),
                      ctypes.byref(buffer), ctypes.byref(done))
     return n.value, stypes.cVectorToPython(buffer), bool(done.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def daffna():
     """
     Find the next (forward) array in the current DAF.
@@ -1868,11 +1993,12 @@ def daffna():
     :rtype: bool
     """
     found = ctypes.c_int()
-    libspice.daffna_c(_naif_context, ctypes.byref(found))
+    libspice.daffna_c(getNaifContext(), ctypes.byref(found))
     return bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def daffpa():
     """
     Find the previous (backward) array in the current DAF.
@@ -1883,11 +2009,12 @@ def daffpa():
     :rtype: bool
     """
     found = ctypes.c_int()
-    libspice.daffpa_c(_naif_context, ctypes.byref(found))
+    libspice.daffpa_c(getNaifContext(), ctypes.byref(found))
     return bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafgda(handle, begin, end):
     """
     Read the double precision data bounded by two addresses within a DAF.
@@ -1907,11 +2034,12 @@ def dafgda(handle, begin, end):
     data = stypes.emptyDoubleVector(abs(end - begin) + 1)
     begin = ctypes.c_int(begin)
     end = ctypes.c_int(end)
-    libspice.dafgda_c(_naif_context, handle, begin, end, data)
+    libspice.dafgda_c(getNaifContext(), handle, begin, end, data)
     return stypes.cVectorToPython(data)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafgh():
     """
     Return (get) the handle of the DAF currently being searched.
@@ -1922,11 +2050,12 @@ def dafgh():
     :rtype: int
     """
     outvalue = ctypes.c_int()
-    libspice.dafgh_c(_naif_context, ctypes.byref(outvalue))
+    libspice.dafgh_c(getNaifContext(), ctypes.byref(outvalue))
     return outvalue.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafgn(lenout=_default_len_out):
     """
     Return (get) the name for the current array in the current DAF.
@@ -1940,11 +2069,12 @@ def dafgn(lenout=_default_len_out):
     """
     lenout = ctypes.c_int(lenout)
     name = stypes.stringToCharP(lenout)
-    libspice.dafgn_c(_naif_context, lenout, name)
+    libspice.dafgn_c(getNaifContext(), lenout, name)
     return stypes.toPythonString(name)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafgs(n=125):
     # The 125 may be a hard set,
     # I got strange errors that occasionally happened without it
@@ -1958,13 +2088,14 @@ def dafgs(n=125):
     :rtype: Array of floats
     """
     retarray = stypes.emptyDoubleVector(125)
-    # libspice.dafgs_c(_naif_context, ctypes.cast(retarray, ctypes.POINTER(ctypes.c_double)))
-    libspice.dafgs_c(_naif_context, retarray)
+    # libspice.dafgs_c(getNaifContext(), ctypes.cast(retarray, ctypes.POINTER(ctypes.c_double)))
+    libspice.dafgs_c(getNaifContext(), retarray)
     return stypes.cVectorToPython(retarray)[0:n]
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dafgsr(handle, recno, begin, end):
     """
     Read a portion of the contents of (words in) a summary record in a DAF file.
@@ -1989,11 +2120,12 @@ def dafgsr(handle, recno, begin, end):
     # dafgsr_c will retrieve no more than 128 words
     data = stypes.emptyDoubleVector(1 + min([128,end.value]) - max([begin.value,1]))
     found = ctypes.c_int()
-    libspice.dafgsr_c(_naif_context, handle, recno, begin, end, data, ctypes.byref(found))
+    libspice.dafgsr_c(getNaifContext(), handle, recno, begin, end, data, ctypes.byref(found))
     return stypes.cVectorToPython(data), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafopr(fname):
     """
     Open a DAF for subsequent read requests.
@@ -2007,11 +2139,12 @@ def dafopr(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.dafopr_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.dafopr_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafopw(fname):
     """
     Open a DAF for subsequent write requests.
@@ -2025,11 +2158,12 @@ def dafopw(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.dafopw_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.dafopw_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafps(nd, ni, dc, ic):
     """
     Pack (assemble) an array summary from its double precision and
@@ -2053,11 +2187,12 @@ def dafps(nd, ni, dc, ic):
     outsum = stypes.emptyDoubleVector(nd + ni)
     nd = ctypes.c_int(nd)
     ni = ctypes.c_int(ni)
-    libspice.dafps_c(_naif_context, nd, ni, dc, ic, outsum)
+    libspice.dafps_c(getNaifContext(), nd, ni, dc, ic, outsum)
     return stypes.cVectorToPython(outsum)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafrda(handle, begin, end):
     """
     Read the double precision data bounded by two addresses within a DAF.
@@ -2081,11 +2216,12 @@ def dafrda(handle, begin, end):
     begin = ctypes.c_int(begin)
     end = ctypes.c_int(end)
     data = stypes.emptyDoubleVector(1 + end.value - begin.value)
-    libspice.dafrda_c(_naif_context, handle, begin, end, data)
+    libspice.dafrda_c(getNaifContext(), handle, begin, end, data)
     return stypes.cVectorToPython(data)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafrfr(handle, lenout=_default_len_out):
     """
     Read the contents of the file record of a DAF.
@@ -2112,7 +2248,7 @@ def dafrfr(handle, lenout=_default_len_out):
     fward = ctypes.c_int()
     bward = ctypes.c_int()
     free = ctypes.c_int()
-    libspice.dafrfr_c(_naif_context, handle, lenout, ctypes.byref(nd), ctypes.byref(ni),
+    libspice.dafrfr_c(getNaifContext(), handle, lenout, ctypes.byref(nd), ctypes.byref(ni),
                       ifname, ctypes.byref(fward), ctypes.byref(bward),
                       ctypes.byref(free))
     return nd.value, ni.value, stypes.toPythonString(
@@ -2120,6 +2256,7 @@ def dafrfr(handle, lenout=_default_len_out):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafrs(insum):
     """
     Change the summary for the current array in the current DAF.
@@ -2130,10 +2267,11 @@ def dafrs(insum):
     :type insum: Array of floats
     """
     insum = stypes.toDoubleVector(insum)
-    libspice.dafrs_c(_naif_context, ctypes.byref(insum))
+    libspice.dafrs_c(getNaifContext(), ctypes.byref(insum))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dafus(insum, nd, ni):
     """
     Unpack an array summary into its double precision and integer components.
@@ -2154,11 +2292,12 @@ def dafus(insum, nd, ni):
     ic = stypes.emptyIntVector(ni)
     nd = ctypes.c_int(nd)
     ni = ctypes.c_int(ni)
-    libspice.dafus_c(_naif_context, insum, nd, ni, dc, ic)
+    libspice.dafus_c(getNaifContext(), insum, nd, ni, dc, ic)
     return stypes.cVectorToPython(dc), stypes.cVectorToPython(ic)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasac(handle, buffer):
     """
     Add comments from a buffer of character strings to the comment
@@ -2176,10 +2315,11 @@ def dasac(handle, buffer):
     n = ctypes.c_int(len(buffer))
     buflen = ctypes.c_int(max(len(s) for s in buffer) + 1)
     buffer = stypes.listToCharArrayPtr(buffer)
-    libspice.dasac_c(_naif_context, handle, n, buflen, buffer)
+    libspice.dasac_c(getNaifContext(), handle, n, buflen, buffer)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dascls(handle):
     """
     Close a DAS file.
@@ -2190,10 +2330,11 @@ def dascls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.dascls_c(_naif_context, handle)
+    libspice.dascls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasdc(handle):
     """
     Delete the entire comment area of a previously opened binary 
@@ -2205,10 +2346,11 @@ def dasdc(handle):
     :type handle: int 
     """
     handle = ctypes.c_int(handle)
-    libspice.dasdc_c(_naif_context, handle)
+    libspice.dasdc_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasec(handle, bufsiz=_default_len_out, buflen=_default_len_out):
     """
     Extract comments from the comment area of a binary DAS file.
@@ -2233,12 +2375,13 @@ def dasec(handle, bufsiz=_default_len_out, buflen=_default_len_out):
     buflen = ctypes.c_int(buflen)
     n = ctypes.c_int(0)
     done = ctypes.c_int()
-    libspice.dasec_c(_naif_context, handle, bufsiz, buflen, ctypes.byref(n),
+    libspice.dasec_c(getNaifContext(), handle, bufsiz, buflen, ctypes.byref(n),
                      ctypes.byref(buffer), ctypes.byref(done))
     return n.value, stypes.cVectorToPython(buffer), done.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dashfn(handle, lenout=_default_len_out):
     """
     Return the name of the DAS file associated with a handle.
@@ -2255,11 +2398,12 @@ def dashfn(handle, lenout=_default_len_out):
     handle = ctypes.c_int(handle)
     namlen = ctypes.c_int(lenout)
     fname  = stypes.stringToCharP(lenout)
-    libspice.dashfn_c(_naif_context, handle, namlen, fname)
+    libspice.dashfn_c(getNaifContext(), handle, namlen, fname)
     return stypes.toPythonString(fname)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasonw(fname, ftype, ifname, ncomch):
     """
     Internal undocumented command for creating a new DAS file
@@ -2283,11 +2427,12 @@ def dasonw(fname, ftype, ifname, ncomch):
     fname   = stypes.stringToCharP(fname)
     ftype   = stypes.stringToCharP(ftype)
     ifname  = stypes.stringToCharP(ifname)
-    libspice.dasonw_(_naif_context, fname, ftype, ifname, ctypes.byref(ncomch), ctypes.byref(handle), fnamelen, ftypelen, ifnamelen)
+    libspice.dasonw_(getNaifContext(), fname, ftype, ifname, ctypes.byref(ncomch), ctypes.byref(handle), fnamelen, ftypelen, ifnamelen)
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasopr(fname):
     """
     Open a DAS file for reading.
@@ -2301,11 +2446,12 @@ def dasopr(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.dasopr_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.dasopr_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasopw(fname):
     """
     Open a DAS file for writing.
@@ -2317,11 +2463,12 @@ def dasopw(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int(0)
-    libspice.dasopw_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.dasopw_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dasrfr(handle, lenout=_default_len_out):
     """
     Return the contents of the file record of a specified DAS file. 
@@ -2346,13 +2493,14 @@ def dasrfr(handle, lenout=_default_len_out):
     nresvc = ctypes.c_int(0)
     ncomr  = ctypes.c_int(0)
     ncomc  = ctypes.c_int(0)
-    libspice.dasrfr_c(_naif_context, handle, idwlen, ifnlen, idword, ifname,
+    libspice.dasrfr_c(getNaifContext(), handle, idwlen, ifnlen, idword, ifname,
                       ctypes.byref(nresvr), ctypes.byref(nresvc),
                       ctypes.byref(ncomr), ctypes.byref(ncomc))
     return stypes.toPythonString(idword), stypes.toPythonString(ifname), nresvr.value, nresvc.value, ncomr.value, ncomc.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dcyldr(x, y, z):
     """
     This routine computes the Jacobian of the transformation from
@@ -2373,11 +2521,12 @@ def dcyldr(x, y, z):
     y = ctypes.c_double(y)
     z = ctypes.c_double(z)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.dcyldr_c(_naif_context, x, y, z, jacobi)
+    libspice.dcyldr_c(getNaifContext(), x, y, z, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def deltet(epoch, eptype):
     """
     Return the value of Delta ET (ET-UTC) for an input epoch.
@@ -2394,11 +2543,12 @@ def deltet(epoch, eptype):
     epoch = ctypes.c_double(epoch)
     eptype = stypes.stringToCharP(eptype)
     delta = ctypes.c_double()
-    libspice.deltet_c(_naif_context, epoch, eptype, ctypes.byref(delta))
+    libspice.deltet_c(getNaifContext(), epoch, eptype, ctypes.byref(delta))
     return delta.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def det(m1):
     """
     Compute the determinant of a double precision 3x3 matrix.
@@ -2411,10 +2561,11 @@ def det(m1):
     :rtype: float
     """
     m1 = stypes.toDoubleMatrix(m1)
-    return libspice.det_c(_naif_context, m1)
+    return libspice.det_c(getNaifContext(), m1)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dgeodr(x, y, z, re, f):
     """
     This routine computes the Jacobian of the transformation from
@@ -2441,11 +2592,12 @@ def dgeodr(x, y, z, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.dgeodr_c(_naif_context, x, y, z, re, f, jacobi)
+    libspice.dgeodr_c(getNaifContext(), x, y, z, re, f, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def diags2(symmat):
     """
     Diagonalize a symmetric 2x2 matrix.
@@ -2462,11 +2614,12 @@ def diags2(symmat):
     symmat = stypes.toDoubleMatrix(symmat)
     diag = stypes.emptyDoubleMatrix(x=2, y=2)
     rotateout = stypes.emptyDoubleMatrix(x=2, y=2)
-    libspice.diags2_c(_naif_context, symmat, diag, rotateout)
+    libspice.diags2_c(getNaifContext(), symmat, diag, rotateout)
     return stypes.cMatrixToNumpy(diag), stypes.cMatrixToNumpy(rotateout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def diff(a, b):
     """
     Take the difference of two sets of any data type to form a third set.
@@ -2492,12 +2645,13 @@ def diff(a, b):
         c = stypes.SPICEINT_CELL(max(a.size, b.size))
     else:
         raise NotImplementedError
-    libspice.diff_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.diff_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dlabbs(handle):
     """
     Begin a backward segment search in a DLA file.
@@ -2512,12 +2666,13 @@ def dlabbs(handle):
     handle = ctypes.c_int(handle)
     descr  = stypes.SpiceDLADescr()
     found  = ctypes.c_int()
-    libspice.dlabbs_c(_naif_context, handle, ctypes.byref(descr), ctypes.byref(found))
+    libspice.dlabbs_c(getNaifContext(), handle, ctypes.byref(descr), ctypes.byref(found))
     return descr, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dlabfs(handle):
     """
     Begin a forward segment search in a DLA file.
@@ -2532,12 +2687,13 @@ def dlabfs(handle):
     handle = ctypes.c_int(handle)
     descr  = stypes.SpiceDLADescr()
     found  = ctypes.c_int()
-    libspice.dlabfs_c(_naif_context, handle, ctypes.byref(descr), ctypes.byref(found))
+    libspice.dlabfs_c(getNaifContext(), handle, ctypes.byref(descr), ctypes.byref(found))
     return descr, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dlafns(handle, descr):
     """
     Find the segment following a specified segment in a DLA file. 
@@ -2555,12 +2711,13 @@ def dlafns(handle, descr):
     handle = ctypes.c_int(handle)
     nxtdsc = stypes.SpiceDLADescr()
     found  = ctypes.c_int()
-    libspice.dlafns_c(_naif_context, handle, ctypes.byref(descr), ctypes.byref(nxtdsc), ctypes.byref(found))
+    libspice.dlafns_c(getNaifContext(), handle, ctypes.byref(descr), ctypes.byref(nxtdsc), ctypes.byref(found))
     return nxtdsc, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dlafps(handle, descr):
     """
     Find the segment preceding a specified segment in a DLA file.
@@ -2578,12 +2735,13 @@ def dlafps(handle, descr):
     handle = ctypes.c_int(handle)
     prvdsc = stypes.SpiceDLADescr()
     found = ctypes.c_int()
-    libspice.dlafps_c(_naif_context, handle, ctypes.byref(descr), ctypes.byref(prvdsc),
+    libspice.dlafps_c(getNaifContext(), handle, ctypes.byref(descr), ctypes.byref(prvdsc),
                       ctypes.byref(found))
     return prvdsc, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dlatdr(x, y, z):
     """
     This routine computes the Jacobian of the transformation from
@@ -2604,11 +2762,12 @@ def dlatdr(x, y, z):
     y = ctypes.c_double(y)
     z = ctypes.c_double(z)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.dlatdr_c(_naif_context, x, y, z, jacobi)
+    libspice.dlatdr_c(getNaifContext(), x, y, z, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dp2hx(number, lenout=_default_len_out):
     """
     Convert a double precision number to an equivalent character
@@ -2627,11 +2786,12 @@ def dp2hx(number, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     string = stypes.stringToCharP(lenout)
     length = ctypes.c_int()
-    libspice.dp2hx_c(_naif_context, number, lenout, string, ctypes.byref(length))
+    libspice.dp2hx_c(getNaifContext(), number, lenout, string, ctypes.byref(length))
     return stypes.toPythonString(string)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dpgrdr(body, x, y, z, re, f):
     """
     This routine computes the Jacobian matrix of the transformation
@@ -2661,11 +2821,12 @@ def dpgrdr(body, x, y, z, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.dpgrdr_c(_naif_context, body, x, y, z, re, f, jacobi)
+    libspice.dpgrdr_c(getNaifContext(), body, x, y, z, re, f, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dpmax():
     """
     Return the value of the largest (positive) number representable
@@ -2678,10 +2839,11 @@ def dpmax():
             in a double precision variable.
     :rtype: float
     """
-    return libspice.dpmax_c(_naif_context)
+    return libspice.dpmax_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dpmin():
     """
     Return the value of the smallest (negative) number representable
@@ -2694,10 +2856,11 @@ def dpmin():
             in a double precision variable.
     :rtype: float
     """
-    return libspice.dpmin_c(_naif_context)
+    return libspice.dpmin_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dpr():
     """
     Return the number of degrees per radian.
@@ -2707,10 +2870,11 @@ def dpr():
     :return: The number of degrees per radian.
     :rtype: float
     """
-    return libspice.dpr_c(_naif_context)
+    return libspice.dpr_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def drdcyl(r, lon, z):
     """
     This routine computes the Jacobian of the transformation from
@@ -2731,11 +2895,12 @@ def drdcyl(r, lon, z):
     lon = ctypes.c_double(lon)
     z = ctypes.c_double(z)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.drdcyl_c(_naif_context, r, lon, z, jacobi)
+    libspice.drdcyl_c(getNaifContext(), r, lon, z, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def drdgeo(lon, lat, alt, re, f):
     """
     This routine computes the Jacobian of the transformation from
@@ -2762,11 +2927,12 @@ def drdgeo(lon, lat, alt, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.drdgeo_c(_naif_context, lon, lat, alt, re, f, jacobi)
+    libspice.drdgeo_c(getNaifContext(), lon, lat, alt, re, f, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def drdlat(r, lon, lat):
     """
     Compute the Jacobian of the transformation from latitudinal to
@@ -2787,11 +2953,12 @@ def drdlat(r, lon, lat):
     lon = ctypes.c_double(lon)
     lat = ctypes.c_double(lat)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.drdlat_c(_naif_context, r, lon, lat, jacobi)
+    libspice.drdlat_c(getNaifContext(), r, lon, lat, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def drdpgr(body, lon, lat, alt, re, f):
     """
     This routine computes the Jacobian matrix of the transformation
@@ -2821,11 +2988,12 @@ def drdpgr(body, lon, lat, alt, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.drdpgr_c(_naif_context, body, lon, lat, alt, re, f, jacobi)
+    libspice.drdpgr_c(getNaifContext(), body, lon, lat, alt, re, f, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def drdsph(r, colat, lon):
     """
     This routine computes the Jacobian of the transformation from
@@ -2846,11 +3014,12 @@ def drdsph(r, colat, lon):
     colat = ctypes.c_double(colat)
     lon = ctypes.c_double(lon)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.drdsph_c(_naif_context, r, colat, lon, jacobi)
+    libspice.drdsph_c(getNaifContext(), r, colat, lon, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskb02(handle, dladsc):
     """
     Return bookkeeping data from a DSK type 2 segment.
@@ -2877,10 +3046,11 @@ def dskb02(handle, dladsc):
     vtxnpl = ctypes.c_int(0)
     voxnpt = ctypes.c_int(0)
     voxnpl = ctypes.c_int(0)
-    libspice.dskb02_c(_naif_context, handle, dladsc, ctypes.byref(nv), ctypes.byref(np), ctypes.byref(nvxtot), vtxbds, ctypes.byref(voxsiz), voxori, vgrext, ctypes.byref(cgscal), ctypes.byref(vtxnpl), ctypes.byref(voxnpt), ctypes.byref(voxnpl))
+    libspice.dskb02_c(getNaifContext(), handle, dladsc, ctypes.byref(nv), ctypes.byref(np), ctypes.byref(nvxtot), vtxbds, ctypes.byref(voxsiz), voxori, vgrext, ctypes.byref(cgscal), ctypes.byref(vtxnpl), ctypes.byref(voxnpt), ctypes.byref(voxnpl))
     return nv.value, np.value, nvxtot.value, stypes.cMatrixToNumpy(vtxbds), voxsiz.value, stypes.cVectorToPython(voxori), stypes.cVectorToPython(vgrext), cgscal.value, vtxnpl.value, voxnpt.value, voxnpl.value
 
 @spiceErrorCheck
+@assertNaifContext
 def dskcls(handle, optmiz=False):
     """
     Close a DSK file. 
@@ -2895,10 +3065,11 @@ def dskcls(handle, optmiz=False):
     """
     handle = ctypes.c_int(handle)
     optmiz = ctypes.c_int(optmiz)
-    libspice.dskcls_c(_naif_context, handle, optmiz)
+    libspice.dskcls_c(getNaifContext(), handle, optmiz)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskd02(handle,dladsc,item,start,room):
     """
     Fetch double precision data from a type 2 DSK segment.
@@ -2925,11 +3096,12 @@ def dskd02(handle,dladsc,item,start,room):
     room   = ctypes.c_int(room)
     n      = ctypes.c_int(0)
     values = stypes.emptyDoubleVector(room)
-    libspice.dskd02_c(_naif_context, handle, dladsc, item, start, room, ctypes.byref(n), values)
+    libspice.dskd02_c(getNaifContext(), handle, dladsc, item, start, room, ctypes.byref(n), values)
     return stypes.cVectorToPython(values)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskgd(handle, dladsc):
     """
     Return the DSK descriptor from a DSK segment identified
@@ -2946,11 +3118,12 @@ def dskgd(handle, dladsc):
     """
     handle = ctypes.c_int(handle)
     dskdsc = stypes.SpiceDSKDescr()
-    libspice.dskgd_c(_naif_context, handle, ctypes.byref(dladsc), ctypes.byref(dskdsc))
+    libspice.dskgd_c(getNaifContext(), handle, ctypes.byref(dladsc), ctypes.byref(dskdsc))
     return dskdsc
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskgtl(keywrd):
     """
     Retrieve the value of a specified DSK tolerance or margin parameter.
@@ -2964,11 +3137,12 @@ def dskgtl(keywrd):
     """
     keywrd = ctypes.c_int(keywrd)
     dpval  = ctypes.c_double(0)
-    libspice.dskgtl_c(_naif_context, keywrd, ctypes.byref(dpval))
+    libspice.dskgtl_c(getNaifContext(), keywrd, ctypes.byref(dpval))
     return dpval.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dski02(handle, dladsc, item, start, room):
     """
     Fetch integer data from a type 2 DSK segment.
@@ -2994,11 +3168,12 @@ def dski02(handle, dladsc, item, start, room):
     room = ctypes.c_int(room)
     n = ctypes.c_int()
     values = stypes.emptyIntVector(room)
-    libspice.dski02_c(_naif_context, handle, dladsc, item, start, room, ctypes.byref(n), values)
+    libspice.dski02_c(getNaifContext(), handle, dladsc, item, start, room, ctypes.byref(n), values)
     return stypes.cMatrixToNumpy(values)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskmi2(vrtces, plates, finscl, corscl, worksz, voxpsz, voxlsz, makvtl, spxisz):
     """
     Make spatial index for a DSK type 2 segment. The index is returned
@@ -3043,11 +3218,12 @@ def dskmi2(vrtces, plates, finscl, corscl, worksz, voxpsz, voxlsz, makvtl, spxis
     work   = stypes.emptyIntMatrix(2, worksz)
     spaixd = stypes.emptyDoubleVector(10) # SPICE_DSK02_SPADSZ
     spaixi = stypes.emptyIntVector(spxisz)
-    libspice.dskmi2_c(_naif_context, nv, vrtces, np, plates, finscl, corscl, worksz, voxpsz, voxlsz, makvtl, spxisz, work, spaixd, spaixi)
+    libspice.dskmi2_c(getNaifContext(), nv, vrtces, np, plates, finscl, corscl, worksz, voxpsz, voxlsz, makvtl, spxisz, work, spaixd, spaixi)
     return stypes.cVectorToPython(spaixd), stypes.cVectorToPython(spaixi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskn02(handle, dladsc, plid):
     """
     Compute the unit normal vector for a specified plate from a type
@@ -3067,11 +3243,12 @@ def dskn02(handle, dladsc, plid):
     handle = ctypes.c_int(handle)
     plid   = ctypes.c_int(plid)
     normal = stypes.emptyDoubleVector(3)
-    libspice.dskn02_c(_naif_context, handle, dladsc, plid, normal)
+    libspice.dskn02_c(getNaifContext(), handle, dladsc, plid, normal)
     return stypes.cVectorToPython(normal)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskobj(dsk):
     """
     Find the set of body ID codes of all objects for which 
@@ -3086,11 +3263,12 @@ def dskobj(dsk):
     """
     dsk = stypes.stringToCharP(dsk)
     bodids = stypes.SPICEINT_CELL(10000)
-    libspice.dskobj_c(_naif_context, dsk, ctypes.byref(bodids))
+    libspice.dskobj_c(getNaifContext(), dsk, ctypes.byref(bodids))
     return bodids
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskopn(fname, ifname, ncomch):
     """
     Open a new DSK file for subsequent write operations. 
@@ -3110,11 +3288,12 @@ def dskopn(fname, ifname, ncomch):
     ifname = stypes.stringToCharP(ifname)
     ncomch = ctypes.c_int(ncomch)
     handle = ctypes.c_int()
-    libspice.dskopn_c(_naif_context, fname, ifname, ncomch, ctypes.byref(handle))
+    libspice.dskopn_c(getNaifContext(), fname, ifname, ncomch, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskp02(handle, dladsc, start, room):
     """
     Fetch triangular plates from a type 2 DSK segment.
@@ -3137,11 +3316,12 @@ def dskp02(handle, dladsc, start, room):
     room   = ctypes.c_int(room)
     n      = ctypes.c_int(0)
     plates = stypes.emptyIntMatrix(3, room)
-    libspice.dskp02_c(_naif_context, handle, dladsc, start, room, ctypes.byref(n), plates)
+    libspice.dskp02_c(getNaifContext(), handle, dladsc, start, room, ctypes.byref(n), plates)
     return stypes.cMatrixToNumpy(plates)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskrb2(vrtces, plates, corsys, corpar):
     """
     Determine range bounds for a set of triangular plates to
@@ -3168,11 +3348,12 @@ def dskrb2(vrtces, plates, corsys, corpar):
     corpar = stypes.toDoubleVector(corpar)
     mncor3 = ctypes.c_double(0.0)
     mxcor3 = ctypes.c_double(0.0)
-    libspice.dskrb2_c(_naif_context, nv, vrtces, np, plates, corsys, corpar, ctypes.byref(mncor3), ctypes.byref(mxcor3))
+    libspice.dskrb2_c(getNaifContext(), nv, vrtces, np, plates, corsys, corpar, ctypes.byref(mncor3), ctypes.byref(mxcor3))
 
     return mncor3.value, mxcor3.value
 
 @spiceErrorCheck
+@assertNaifContext
 def dsksrf(dsk, bodyid):
     """
     Find the set of surface ID codes for all surfaces associated with 
@@ -3189,11 +3370,12 @@ def dsksrf(dsk, bodyid):
     dsk    = stypes.stringToCharP(dsk)
     bodyid = ctypes.c_int(bodyid)
     srfids = stypes.SPICEINT_CELL(10000)
-    libspice.dsksrf_c(_naif_context, dsk, bodyid, ctypes.byref(srfids))
+    libspice.dsksrf_c(getNaifContext(), dsk, bodyid, ctypes.byref(srfids))
     return srfids
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskstl(keywrd, dpval):
     """
     Set the value of a specified DSK tolerance or margin parameter.
@@ -3208,10 +3390,11 @@ def dskstl(keywrd, dpval):
     """
     keywrd = ctypes.c_int(keywrd)
     dpval = ctypes.c_double(dpval)
-    libspice.dskstl_c(_naif_context, keywrd, dpval)
+    libspice.dskstl_c(getNaifContext(), keywrd, dpval)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskv02(handle, dladsc, start, room):
     """
     Fetch vertices from a type 2 DSK segment.
@@ -3234,11 +3417,12 @@ def dskv02(handle, dladsc, start, room):
     room   = ctypes.c_int(room)
     n      = ctypes.c_int()
     vrtces = stypes.emptyDoubleMatrix(3, room)
-    libspice.dskv02_c(_naif_context, handle, dladsc, start, room, ctypes.byref(n), vrtces)
+    libspice.dskv02_c(getNaifContext(), handle, dladsc, start, room, ctypes.byref(n), vrtces)
     return stypes.cMatrixToNumpy(vrtces)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskw02(handle, center, surfid, dclass, fname, corsys, corpar, mncor1,
            mxcor1, mncor2, mxcor2, mncor3, mxcor3, first, last, vrtces,
            plates, spaixd, spaixi):
@@ -3307,12 +3491,13 @@ def dskw02(handle, center, surfid, dclass, fname, corsys, corpar, mncor1,
     plates = stypes.toIntMatrix(plates)
     spaixd = stypes.toDoubleVector(spaixd)
     spaixi = stypes.toIntVector(spaixi)
-    libspice.dskw02_c(_naif_context, handle, center, surfid, dclass, fname, corsys, corpar,
+    libspice.dskw02_c(getNaifContext(), handle, center, surfid, dclass, fname, corsys, corpar,
                       mncor1, mxcor1, mncor2, mxcor2, mncor3, mxcor3, first,
                       last, nv, vrtces, np, plates, spaixd, spaixi)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskx02(handle, dladsc, vertex, raydir):
     """
     Determine the plate ID and body-fixed coordinates of the
@@ -3338,11 +3523,12 @@ def dskx02(handle, dladsc, vertex, raydir):
     plid   = ctypes.c_int()
     xpt    = stypes.emptyDoubleVector(3)
     found  = ctypes.c_int()
-    libspice.dskx02_c(_naif_context, handle, ctypes.byref(dladsc), vertex, raydir, ctypes.byref(plid), xpt, ctypes.byref(found))
+    libspice.dskx02_c(getNaifContext(), handle, ctypes.byref(dladsc), vertex, raydir, ctypes.byref(plid), xpt, ctypes.byref(found))
     return plid.value, stypes.cVectorToPython(xpt), bool(found.value)
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dskxsi(pri, target, srflst, et, fixref, vertex, raydir):
     """
     Compute a ray-surface intercept using data provided by
@@ -3387,11 +3573,12 @@ def dskxsi(pri, target, srflst, et, fixref, vertex, raydir):
     dc     = stypes.emptyDoubleVector(1)
     ic     = stypes.emptyIntVector(1)
     found  = ctypes.c_int()
-    libspice.dskxsi_c(_naif_context, pri, target, nsurf, srflst, et, fixref, vertex, raydir, maxd, maxi, xpt, handle, dladsc, dskdsc, dc, ic, found)
+    libspice.dskxsi_c(getNaifContext(), pri, target, nsurf, srflst, et, fixref, vertex, raydir, maxd, maxi, xpt, handle, dladsc, dskdsc, dc, ic, found)
     return stypes.cVectorToPython(xpt), handle.value, dladsc, dskdsc, stypes.cVectorToPython(dc), stypes.cVectorToPython(ic), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskxv(pri, target, srflst, et, fixref, vtxarr, dirarr):
     """
     Compute ray-surface intercepts for a set of rays, using data
@@ -3427,11 +3614,12 @@ def dskxv(pri, target, srflst, et, fixref, vtxarr, dirarr):
     dirarr = stypes.toDoubleMatrix(dirarr)
     xptarr = stypes.emptyDoubleMatrix(y=nray)
     fndarr = stypes.emptyIntVector(nray)
-    libspice.dskxv_c(_naif_context, pri, target, nsurf, srflst, et, fixref, nray, vtxarr, dirarr, xptarr, fndarr)
+    libspice.dskxv_c(getNaifContext(), pri, target, nsurf, srflst, et, fixref, nray, vtxarr, dirarr, xptarr, fndarr)
     return stypes.cMatrixToNumpy(xptarr), stypes.cVectorToPython(fndarr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dskz02(handle, dladsc):
     """
     Return plate model size parameters---plate count and
@@ -3449,11 +3637,12 @@ def dskz02(handle, dladsc):
     handle = ctypes.c_int(handle)
     nv = ctypes.c_int()
     np = ctypes.c_int()
-    libspice.dskz02_c(_naif_context, handle, dladsc, ctypes.byref(nv), ctypes.byref(np))
+    libspice.dskz02_c(getNaifContext(), handle, dladsc, ctypes.byref(nv), ctypes.byref(np))
     return nv.value, np.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dsphdr(x, y, z):
     """
     This routine computes the Jacobian of the transformation from
@@ -3475,12 +3664,13 @@ def dsphdr(x, y, z):
     y = ctypes.c_double(y)
     z = ctypes.c_double(z)
     jacobi = stypes.emptyDoubleMatrix()
-    libspice.dsphdr_c(_naif_context, x, y, z, jacobi)
+    libspice.dsphdr_c(getNaifContext(), x, y, z, jacobi)
     return stypes.cMatrixToNumpy(jacobi)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def dtpool(name):
     """
     Return the data about a kernel pool variable.
@@ -3498,12 +3688,13 @@ def dtpool(name):
     found = ctypes.c_int()
     n = ctypes.c_int()
     typeout = ctypes.c_char()
-    libspice.dtpool_c(_naif_context, name, ctypes.byref(found), ctypes.byref(n),
+    libspice.dtpool_c(getNaifContext(), name, ctypes.byref(found), ctypes.byref(n),
                       ctypes.byref(typeout))
     return n.value, stypes.toPythonString(typeout.value), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ducrss(s1, s2):
     """
     Compute the unit vector parallel to the cross product of
@@ -3522,11 +3713,12 @@ def ducrss(s1, s2):
     s1 = stypes.toDoubleVector(s1)
     s2 = stypes.toDoubleVector(s2)
     sout = stypes.emptyDoubleVector(6)
-    libspice.ducrss_c(_naif_context, s1, s2, sout)
+    libspice.ducrss_c(getNaifContext(), s1, s2, sout)
     return stypes.cVectorToPython(sout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvcrss(s1, s2):
     """
     Compute the cross product of two 3-dimensional vectors
@@ -3545,11 +3737,12 @@ def dvcrss(s1, s2):
     s1 = stypes.toDoubleVector(s1)
     s2 = stypes.toDoubleVector(s2)
     sout = stypes.emptyDoubleVector(6)
-    libspice.dvcrss_c(_naif_context, s1, s2, sout)
+    libspice.dvcrss_c(getNaifContext(), s1, s2, sout)
     return stypes.cVectorToPython(sout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvdot(s1, s2):
     """
     Compute the derivative of the dot product of two double
@@ -3567,10 +3760,11 @@ def dvdot(s1, s2):
     assert len(s1) == 6 and len(s2) == 6
     s1 = stypes.toDoubleVector(s1)
     s2 = stypes.toDoubleVector(s2)
-    return libspice.dvdot_c(_naif_context, s1, s2)
+    return libspice.dvdot_c(getNaifContext(), s1, s2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvhat(s1):
     """
     Find the unit vector corresponding to a state vector and the
@@ -3586,11 +3780,12 @@ def dvhat(s1):
     assert len(s1) == 6
     s1 = stypes.toDoubleVector(s1)
     sout = stypes.emptyDoubleVector(6)
-    libspice.dvhat_c(_naif_context, s1, sout)
+    libspice.dvhat_c(getNaifContext(), s1, sout)
     return stypes.cVectorToPython(sout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvnorm(state):
     """
     Function to calculate the derivative of the norm of a 3-vector.
@@ -3605,10 +3800,11 @@ def dvnorm(state):
     """
     assert len(state) == 6
     state = stypes.toDoubleVector(state)
-    return libspice.dvnorm_c(_naif_context, state)
+    return libspice.dvnorm_c(getNaifContext(), state)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvpool(name):
     """
     Delete a variable from the kernel pool.
@@ -3619,10 +3815,11 @@ def dvpool(name):
     :type name: str
     """
     name = stypes.stringToCharP(name)
-    libspice.dvpool_c(_naif_context, name)
+    libspice.dvpool_c(getNaifContext(), name)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def dvsep(s1, s2):
     """
     Calculate the time derivative of the separation angle between
@@ -3640,7 +3837,7 @@ def dvsep(s1, s2):
     assert len(s1) == 6 and len(s2) == 6
     s1 = stypes.toDoubleVector(s1)
     s2 = stypes.toDoubleVector(s2)
-    return libspice.dvsep_c(_naif_context, s1, s2)
+    return libspice.dvsep_c(getNaifContext(), s1, s2)
 
 
 ################################################################################
@@ -3648,6 +3845,7 @@ def dvsep(s1, s2):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def edlimb(a, b, c, viewpt):
     """
     Find the limb of a triaxial ellipsoid, viewed from a specified point.
@@ -3670,11 +3868,12 @@ def edlimb(a, b, c, viewpt):
     b = ctypes.c_double(b)
     c = ctypes.c_double(c)
     viewpt = stypes.toDoubleVector(viewpt)
-    libspice.edlimb_c(_naif_context, a, b, c, viewpt, ctypes.byref(limb))
+    libspice.edlimb_c(getNaifContext(), a, b, c, viewpt, ctypes.byref(limb))
     return limb
 
 
 @spiceErrorCheck
+@assertNaifContext
 def edterm(trmtyp, source, target, et, fixref, abcorr, obsrvr, npts):
     """
     Compute a set of points on the umbral or penumbral terminator of
@@ -3716,13 +3915,14 @@ def edterm(trmtyp, source, target, et, fixref, abcorr, obsrvr, npts):
     obspos = stypes.emptyDoubleVector(3)
     trmpts = stypes.emptyDoubleMatrix(x=3, y=npts)
     npts = ctypes.c_int(npts)
-    libspice.edterm_c(_naif_context, trmtyp, source, target, et, fixref, abcorr, obsrvr, npts,
+    libspice.edterm_c(getNaifContext(), trmtyp, source, target, et, fixref, abcorr, obsrvr, npts,
                       ctypes.byref(trgepc), obspos, trmpts)
     return trgepc.value, stypes.cVectorToPython(obspos), stypes.cMatrixToNumpy(
             trmpts)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekacec(handle, segno, recno, column, nvals, cvals, isnull):
     """
     Add data to a character column in a specified EK record.
@@ -3752,10 +3952,11 @@ def ekacec(handle, segno, recno, column, nvals, cvals, isnull):
     vallen = ctypes.c_int(len(max(cvals, key=len)) + 1)
     cvals = stypes.listToCharArrayPtr(cvals)
     isnull = ctypes.c_int(isnull)
-    libspice.ekacec_c(_naif_context, handle, segno, recno, column, nvals, vallen, cvals, isnull)
+    libspice.ekacec_c(getNaifContext(), handle, segno, recno, column, nvals, vallen, cvals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekaced(handle, segno, recno, column, nvals, dvals, isnull):
     """
     Add data to an double precision column in a specified EK record.
@@ -3784,10 +3985,11 @@ def ekaced(handle, segno, recno, column, nvals, dvals, isnull):
     nvals = ctypes.c_int(nvals)
     dvals = stypes.toDoubleVector(dvals)
     isnull = ctypes.c_int(isnull)
-    libspice.ekaced_c(_naif_context, handle, segno, recno, column, nvals, dvals, isnull)
+    libspice.ekaced_c(getNaifContext(), handle, segno, recno, column, nvals, dvals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekacei(handle, segno, recno, column, nvals, ivals, isnull):
     """
     Add data to an integer column in a specified EK record.
@@ -3816,10 +4018,11 @@ def ekacei(handle, segno, recno, column, nvals, ivals, isnull):
     nvals = ctypes.c_int(nvals)
     ivals = stypes.toIntVector(ivals)
     isnull = ctypes.c_int(isnull)
-    libspice.ekacei_c(_naif_context, handle, segno, recno, column, nvals, ivals, isnull)
+    libspice.ekacei_c(getNaifContext(), handle, segno, recno, column, nvals, ivals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekaclc(handle, segno, column, vallen, cvals, entszs, nlflgs, rcptrs,
            wkindx):
     """
@@ -3857,12 +4060,13 @@ def ekaclc(handle, segno, column, vallen, cvals, entszs, nlflgs, rcptrs,
     nlflgs = stypes.toIntVector(nlflgs)
     rcptrs = stypes.toIntVector(rcptrs)
     wkindx = stypes.toIntVector(wkindx)
-    libspice.ekaclc_c(_naif_context, handle, segno, column, vallen, cvals, entszs, nlflgs,
+    libspice.ekaclc_c(getNaifContext(), handle, segno, column, vallen, cvals, entszs, nlflgs,
                       rcptrs, wkindx)
     return stypes.cVectorToPython(wkindx)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekacld(handle, segno, column, dvals, entszs, nlflgs, rcptrs, wkindx):
     """
     Add an entire double precision column to an EK segment.
@@ -3896,12 +4100,13 @@ def ekacld(handle, segno, column, dvals, entszs, nlflgs, rcptrs, wkindx):
     nlflgs = stypes.toIntVector(nlflgs)
     rcptrs = stypes.toIntVector(rcptrs)
     wkindx = stypes.toIntVector(wkindx)
-    libspice.ekacld_c(_naif_context, handle, segno, column, dvals, entszs, nlflgs, rcptrs,
+    libspice.ekacld_c(getNaifContext(), handle, segno, column, dvals, entszs, nlflgs, rcptrs,
                       wkindx)
     return stypes.cVectorToPython(wkindx)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekacli(handle, segno, column, ivals, entszs, nlflgs, rcptrs, wkindx):
     """
     Add an entire integer column to an EK segment.
@@ -3934,12 +4139,13 @@ def ekacli(handle, segno, column, ivals, entszs, nlflgs, rcptrs, wkindx):
     nlflgs = stypes.toIntVector(nlflgs)
     rcptrs = stypes.toIntVector(rcptrs)
     wkindx = stypes.toIntVector(wkindx)
-    libspice.ekacli_c(_naif_context, handle, segno, column, ivals, entszs, nlflgs, rcptrs,
+    libspice.ekacli_c(getNaifContext(), handle, segno, column, ivals, entszs, nlflgs, rcptrs,
                       wkindx)
     return stypes.cVectorToPython(wkindx)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekappr(handle, segno):
     """
     Append a new, empty record at the end of a specified E-kernel segment.
@@ -3956,11 +4162,12 @@ def ekappr(handle, segno):
     handle = ctypes.c_int(handle)
     segno = ctypes.c_int(segno)
     recno = ctypes.c_int()
-    libspice.ekappr_c(_naif_context, handle, segno, ctypes.byref(recno))
+    libspice.ekappr_c(getNaifContext(), handle, segno, ctypes.byref(recno))
     return recno.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekbseg(handle, tabnam, cnames, decls):
     """
     Start a new segment in an E-kernel.
@@ -3986,11 +4193,12 @@ def ekbseg(handle, tabnam, cnames, decls):
     declen = ctypes.c_int(len(max(decls, key=len)) + 1)
     decls = stypes.listToCharArrayPtr(decls)
     segno = ctypes.c_int()
-    libspice.ekbseg_c(_naif_context, handle, tabnam, ncols, cnmlen, cnames, declen, decls, ctypes.byref(segno))
+    libspice.ekbseg_c(getNaifContext(), handle, tabnam, ncols, cnmlen, cnames, declen, decls, ctypes.byref(segno))
     return segno.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekccnt(table):
     """
     Return the number of distinct columns in a specified,
@@ -4005,11 +4213,12 @@ def ekccnt(table):
     """
     table = stypes.stringToCharP(table)
     ccount = ctypes.c_int()
-    libspice.ekccnt_c(_naif_context, table, ctypes.byref(ccount))
+    libspice.ekccnt_c(getNaifContext(), table, ctypes.byref(ccount))
     return ccount.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekcii(table, cindex, lenout=_default_len_out):
     """
     Return attribute information about a column belonging to a loaded
@@ -4030,11 +4239,12 @@ def ekcii(table, cindex, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     column = stypes.stringToCharP(lenout)
     attdsc = stypes.SpiceEKAttDsc()
-    libspice.ekcii_c(_naif_context, table, cindex, lenout, column, ctypes.byref(attdsc))
+    libspice.ekcii_c(getNaifContext(), table, cindex, lenout, column, ctypes.byref(attdsc))
     return stypes.toPythonString(column), attdsc
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekcls(handle):
     """
     Close an E-kernel.
@@ -4045,10 +4255,11 @@ def ekcls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.ekcls_c(_naif_context, handle)
+    libspice.ekcls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekdelr(handle, segno, recno):
     """
     Delete a specified record from a specified E-kernel segment.
@@ -4065,10 +4276,11 @@ def ekdelr(handle, segno, recno):
     handle = ctypes.c_int(handle)
     segno = ctypes.c_int(segno)
     recno = ctypes.c_int(recno)
-    libspice.ekdelr_c(_naif_context, handle, segno, recno)
+    libspice.ekdelr_c(getNaifContext(), handle, segno, recno)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekffld(handle, segno, rcptrs):
     """
     Complete a fast write operation on a new E-kernel segment.
@@ -4085,11 +4297,12 @@ def ekffld(handle, segno, rcptrs):
     handle = ctypes.c_int(handle)
     segno = ctypes.c_int(segno)
     rcptrs = stypes.toIntVector(rcptrs)
-    libspice.ekffld_c(_naif_context, handle, segno,
+    libspice.ekffld_c(getNaifContext(), handle, segno,
                       ctypes.cast(rcptrs, ctypes.POINTER(ctypes.c_int)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekfind(query, lenout=_default_len_out):
     """
     Find E-kernel data that satisfy a set of constraints.
@@ -4111,13 +4324,14 @@ def ekfind(query, lenout=_default_len_out):
     nmrows = ctypes.c_int()
     error = ctypes.c_int()
     errmsg = stypes.stringToCharP(lenout)
-    libspice.ekfind_c(_naif_context, query, lenout, ctypes.byref(nmrows), ctypes.byref(error),
+    libspice.ekfind_c(getNaifContext(), query, lenout, ctypes.byref(nmrows), ctypes.byref(error),
                       errmsg)
     return nmrows.value, error.value, stypes.toPythonString(errmsg)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ekgc(selidx, row, element, lenout=_default_len_out):
     """
     Return an element of an entry in a column of character type in a specified
@@ -4145,12 +4359,13 @@ def ekgc(selidx, row, element, lenout=_default_len_out):
     null = ctypes.c_int()
     found = ctypes.c_int()
     cdata = stypes.stringToCharP(lenout)
-    libspice.ekgc_c(_naif_context, selidx, row, element, lenout, cdata, ctypes.byref(null), ctypes.byref(found))
+    libspice.ekgc_c(getNaifContext(), selidx, row, element, lenout, cdata, ctypes.byref(null), ctypes.byref(found))
     return stypes.toPythonString(cdata), null.value, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ekgd(selidx, row, element):
     """
     Return an element of an entry in a column of double precision type in a
@@ -4175,13 +4390,14 @@ def ekgd(selidx, row, element):
     ddata = ctypes.c_double()
     null = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.ekgd_c(_naif_context, selidx, row, element, ctypes.byref(ddata),
+    libspice.ekgd_c(getNaifContext(), selidx, row, element, ctypes.byref(ddata),
                     ctypes.byref(null), ctypes.byref(found))
     return ddata.value, null.value, bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def ekgi(selidx, row, element):
     """
     Return an element of an entry in a column of integer type in a specified
@@ -4206,12 +4422,13 @@ def ekgi(selidx, row, element):
     idata = ctypes.c_int()
     null = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.ekgi_c(_naif_context, selidx, row, element, ctypes.byref(idata),
+    libspice.ekgi_c(getNaifContext(), selidx, row, element, ctypes.byref(idata),
                     ctypes.byref(null), ctypes.byref(found))
     return idata.value, null.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekifld(handle, tabnam, ncols, nrows, cnmlen, cnames, declen, decls):
     """
     Initialize a new E-kernel segment to allow fast writing.
@@ -4247,12 +4464,13 @@ def ekifld(handle, tabnam, ncols, nrows, cnmlen, cnames, declen, decls):
     recptrs = stypes.emptyIntVector(nrows)
     decls = stypes.listToCharArray(decls)
     segno = ctypes.c_int()
-    libspice.ekifld_c(_naif_context, handle, tabnam, ncols, nrows, cnmlen, cnames, declen,
+    libspice.ekifld_c(getNaifContext(), handle, tabnam, ncols, nrows, cnmlen, cnames, declen,
                       decls, ctypes.byref(segno), recptrs)
     return segno.value, stypes.cVectorToPython(recptrs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekinsr(handle, segno, recno):
     """
     Add a new, empty record to a specified E-kernel segment at a specified
@@ -4270,10 +4488,11 @@ def ekinsr(handle, segno, recno):
     handle = ctypes.c_int(handle)
     segno = ctypes.c_int(segno)
     recno = ctypes.c_int(recno)
-    libspice.ekinsr_c(_naif_context, handle, segno, recno)
+    libspice.ekinsr_c(getNaifContext(), handle, segno, recno)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eklef(fname):
     """
     Load an EK file, making it accessible to the EK readers.
@@ -4287,11 +4506,12 @@ def eklef(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.eklef_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.eklef_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eknelt(selidx, row):
     """
     Return the number of elements in a specified column entry in
@@ -4308,10 +4528,11 @@ def eknelt(selidx, row):
     """
     selidx = ctypes.c_int(selidx)
     row = ctypes.c_int(row)
-    return libspice.eknelt_c(_naif_context, selidx, row)
+    return libspice.eknelt_c(getNaifContext(), selidx, row)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eknseg(handle):
     """
     Return the number of segments in a specified EK.
@@ -4324,10 +4545,11 @@ def eknseg(handle):
     :rtype: int
     """
     handle = ctypes.c_int(handle)
-    return libspice.eknseg_c(_naif_context, handle)
+    return libspice.eknseg_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekntab():
     """
     Return the number of loaded EK tables.
@@ -4338,11 +4560,12 @@ def ekntab():
     :rtype: int
     """
     n = ctypes.c_int(0)
-    libspice.ekntab_c(_naif_context, ctypes.byref(n))
+    libspice.ekntab_c(getNaifContext(), ctypes.byref(n))
     return n.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekopn(fname, ifname, ncomch):
     """
     Open a new E-kernel file and prepare the file for writing.
@@ -4362,11 +4585,12 @@ def ekopn(fname, ifname, ncomch):
     ifname = stypes.stringToCharP(ifname)
     ncomch = ctypes.c_int(ncomch)
     handle = ctypes.c_int()
-    libspice.ekopn_c(_naif_context, fname, ifname, ncomch, ctypes.byref(handle))
+    libspice.ekopn_c(getNaifContext(), fname, ifname, ncomch, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekopr(fname):
     """
     Open an existing E-kernel file for reading.
@@ -4380,11 +4604,12 @@ def ekopr(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.ekopr_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.ekopr_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekops():
     """
     Open a scratch (temporary) E-kernel file and prepare the file
@@ -4396,11 +4621,12 @@ def ekops():
     :rtype: int
     """
     handle = ctypes.c_int()
-    libspice.ekops_c(_naif_context, ctypes.byref(handle))
+    libspice.ekops_c(getNaifContext(), ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekopw(fname):
     """
     Open an existing E-kernel file for writing.
@@ -4414,11 +4640,12 @@ def ekopw(fname):
     """
     fname = stypes.stringToCharP(fname)
     handle = ctypes.c_int()
-    libspice.ekopw_c(_naif_context, fname, ctypes.byref(handle))
+    libspice.ekopw_c(getNaifContext(), fname, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekpsel(query, msglen, tablen, collen):
     """
     Parse the SELECT clause of an EK query, returning full particulars
@@ -4459,7 +4686,7 @@ def ekpsel(query, msglen, tablen, collen):
     cols = stypes.emptyCharArray(yLen=_SPICE_EK_MAXQSEL, xLen=collen)
     error = ctypes.c_int()
     errmsg = stypes.stringToCharP(msglen)
-    libspice.ekpsel_c(_naif_context, query, msglen, tablen, collen, ctypes.byref(n),
+    libspice.ekpsel_c(getNaifContext(), query, msglen, tablen, collen, ctypes.byref(n),
                       xbegs, xends, xtypes, xclass, ctypes.byref(tabs),
                       ctypes.byref(cols), ctypes.byref(error), errmsg)
     return (n.value,
@@ -4474,6 +4701,7 @@ def ekpsel(query, msglen, tablen, collen):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekrcec(handle, segno, recno, column, lenout, nelts=_SPICE_EK_EKRCEX_ROOM_DEFAULT):
     """
     Read data from a character column in a specified EK record.
@@ -4506,12 +4734,13 @@ def ekrcec(handle, segno, recno, column, lenout, nelts=_SPICE_EK_EKRCEX_ROOM_DEF
     nvals = ctypes.c_int()
     cvals = stypes.emptyCharArray(yLen=nelts, xLen=lenout)
     isnull = ctypes.c_int()
-    libspice.ekrcec_c(_naif_context, handle, segno, recno, column, lenout, ctypes.byref(nvals), ctypes.byref(cvals), ctypes.byref(isnull))
+    libspice.ekrcec_c(getNaifContext(), handle, segno, recno, column, lenout, ctypes.byref(nvals), ctypes.byref(cvals), ctypes.byref(isnull))
     assert failed() or (nvals.value <= nelts)
     return nvals.value, stypes.cVectorToPython(cvals)[:nvals.value], bool(isnull.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekrced(handle, segno, recno, column, nelts=_SPICE_EK_EKRCEX_ROOM_DEFAULT):
     """
     Read data from a double precision column in a specified EK record.
@@ -4539,13 +4768,14 @@ def ekrced(handle, segno, recno, column, nelts=_SPICE_EK_EKRCEX_ROOM_DEFAULT):
     nvals = ctypes.c_int(0)
     dvals = stypes.emptyDoubleVector(nelts)
     isnull = ctypes.c_int()
-    libspice.ekrced_c(_naif_context, handle, segno, recno, column, ctypes.byref(nvals), dvals,
+    libspice.ekrced_c(getNaifContext(), handle, segno, recno, column, ctypes.byref(nvals), dvals,
                       ctypes.byref(isnull))
     assert failed() or (nvals.value <= nelts)
     return nvals.value, stypes.cVectorToPython(dvals)[:nvals.value], bool(isnull.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekrcei(handle, segno, recno, column, nelts=_SPICE_EK_EKRCEX_ROOM_DEFAULT):
     """
     Read data from an integer column in a specified EK record.
@@ -4573,13 +4803,14 @@ def ekrcei(handle, segno, recno, column, nelts=_SPICE_EK_EKRCEX_ROOM_DEFAULT):
     nvals = ctypes.c_int()
     ivals = stypes.emptyIntVector(nelts)
     isnull = ctypes.c_int()
-    libspice.ekrcei_c(_naif_context, handle, segno, recno, column, ctypes.byref(nvals), ivals,
+    libspice.ekrcei_c(getNaifContext(), handle, segno, recno, column, ctypes.byref(nvals), ivals,
                       ctypes.byref(isnull))
     assert failed() or (nvals.value <= nelts)
     return nvals.value, stypes.cVectorToPython(ivals)[:nvals.value], bool(isnull.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekssum(handle, segno):
     """
     Return summary information for a specified segment in a specified EK.
@@ -4596,11 +4827,12 @@ def ekssum(handle, segno):
     handle = ctypes.c_int(handle)
     segno = ctypes.c_int(segno)
     segsum = stypes.SpiceEKSegSum()
-    libspice.ekssum_c(_naif_context, handle, segno, ctypes.byref(segsum))
+    libspice.ekssum_c(getNaifContext(), handle, segno, ctypes.byref(segsum))
     return segsum
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ektnam(n, lenout=_default_len_out):
     """
     Return the name of a specified, loaded table.
@@ -4617,11 +4849,12 @@ def ektnam(n, lenout=_default_len_out):
     n = ctypes.c_int(n)
     lenout = ctypes.c_int(lenout)
     table = stypes.stringToCharP(lenout)
-    libspice.ektnam_c(_naif_context, n, lenout, table)
+    libspice.ektnam_c(getNaifContext(), n, lenout, table)
     return stypes.toPythonString(table)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekucec(handle, segno, recno, column, nvals, cvals, isnull):
     """
     Update a character column entry in a specified EK record.
@@ -4651,10 +4884,11 @@ def ekucec(handle, segno, recno, column, nvals, cvals, isnull):
     vallen = ctypes.c_int(len(max(cvals, key=len)) + 1)
     cvals = stypes.listToCharArrayPtr(cvals, xLen=vallen)
     isnull = ctypes.c_int(isnull)
-    libspice.ekucec_c(_naif_context, handle, segno, recno, column, nvals, vallen, cvals, isnull)
+    libspice.ekucec_c(getNaifContext(), handle, segno, recno, column, nvals, vallen, cvals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekuced(handle, segno, recno, column, nvals, dvals, isnull):
     """
     Update a double precision column entry in a specified EK record.
@@ -4683,10 +4917,11 @@ def ekuced(handle, segno, recno, column, nvals, dvals, isnull):
     nvals = ctypes.c_int(nvals)
     dvals = stypes.toDoubleVector(dvals)
     isnull = ctypes.c_int(isnull)
-    libspice.ekaced_c(_naif_context, handle, segno, recno, column, nvals, dvals, isnull)
+    libspice.ekaced_c(getNaifContext(), handle, segno, recno, column, nvals, dvals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekucei(handle, segno, recno, column, nvals, ivals, isnull):
     """
     Update an integer column entry in a specified EK record.
@@ -4715,10 +4950,11 @@ def ekucei(handle, segno, recno, column, nvals, ivals, isnull):
     nvals = ctypes.c_int(nvals)
     ivals = stypes.toIntVector(ivals)
     isnull = ctypes.c_int(isnull)
-    libspice.ekucei_c(_naif_context, handle, segno, recno, column, nvals, ivals, isnull)
+    libspice.ekucei_c(getNaifContext(), handle, segno, recno, column, nvals, ivals, isnull)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ekuef(handle):
     """
     Unload an EK file, making its contents inaccessible to the
@@ -4731,10 +4967,11 @@ def ekuef(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.ekuef_c(_naif_context, handle)
+    libspice.ekuef_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def el2cgv(ellipse):
     """
     Convert an ellipse to a center vector and two generating
@@ -4752,12 +4989,13 @@ def el2cgv(ellipse):
     center = stypes.emptyDoubleVector(3)
     smajor = stypes.emptyDoubleVector(3)
     sminor = stypes.emptyDoubleVector(3)
-    libspice.el2cgv_c(_naif_context, ctypes.byref(ellipse), center, smajor, sminor)
+    libspice.el2cgv_c(getNaifContext(), ctypes.byref(ellipse), center, smajor, sminor)
     return stypes.cVectorToPython(center), stypes.cVectorToPython(
             smajor), stypes.cVectorToPython(sminor)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def elemc(item, inset):
     """
     Determine whether an item is an element of a character set.
@@ -4773,10 +5011,11 @@ def elemc(item, inset):
     """
     assert isinstance(inset, stypes.SpiceCell)
     item = stypes.stringToCharP(item)
-    return bool(libspice.elemc_c(_naif_context, item, ctypes.byref(inset)))
+    return bool(libspice.elemc_c(getNaifContext(), item, ctypes.byref(inset)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def elemd(item, inset):
     """
     Determine whether an item is an element of a double precision set.
@@ -4793,10 +5032,11 @@ def elemd(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.dtype == 1
     item = ctypes.c_double(item)
-    return bool(libspice.elemd_c(_naif_context, item, ctypes.byref(inset)))
+    return bool(libspice.elemd_c(getNaifContext(), item, ctypes.byref(inset)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def elemi(item, inset):
     """
     Determine whether an item is an element of an integer set.
@@ -4813,10 +5053,11 @@ def elemi(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.dtype == 2
     item = ctypes.c_int(item)
-    return bool(libspice.elemi_c(_naif_context, item, ctypes.byref(inset)))
+    return bool(libspice.elemi_c(getNaifContext(), item, ctypes.byref(inset)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eqncpv(et, epoch, eqel, rapol, decpol):
     """
     Compute the state (position and velocity of an object whose
@@ -4844,11 +5085,12 @@ def eqncpv(et, epoch, eqel, rapol, decpol):
     rapol = ctypes.c_double(rapol)
     decpol = ctypes.c_double(decpol)
     state = stypes.emptyDoubleVector(6)
-    libspice.eqncpv_c(_naif_context, et, epoch, eqel, rapol, decpol, state)
+    libspice.eqncpv_c(getNaifContext(), et, epoch, eqel, rapol, decpol, state)
     return stypes.cVectorToPython(state)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eqstr(a, b):
     """
     Determine whether two strings are equivalent.
@@ -4862,9 +5104,10 @@ def eqstr(a, b):
     :return: True if A and B are equivalent.
     :rtype: bool
     """
-    return bool(libspice.eqstr_c(_naif_context, stypes.stringToCharP(a), stypes.stringToCharP(b)))
+    return bool(libspice.eqstr_c(getNaifContext(), stypes.stringToCharP(a), stypes.stringToCharP(b)))
 
 
+@assertNaifContext
 def erract(op, lenout, action=None):
     """
     Retrieve or set the default error action.
@@ -4887,10 +5130,11 @@ def erract(op, lenout, action=None):
     op = stypes.stringToCharP(op)
     action = ctypes.create_string_buffer(str.encode(action), lenout.value)
     actionptr = ctypes.c_char_p(ctypes.addressof(action))
-    libspice.erract_c(_naif_context, op, lenout, actionptr)
+    libspice.erract_c(getNaifContext(), op, lenout, actionptr)
     return stypes.toPythonString(actionptr)
 
 
+@assertNaifContext
 def errch(marker, string):
     """
     Substitute a character string for the first occurrence of
@@ -4905,9 +5149,10 @@ def errch(marker, string):
     """
     marker = stypes.stringToCharP(marker)
     string = stypes.stringToCharP(string)
-    libspice.errch_c(_naif_context, marker, string)
+    libspice.errch_c(getNaifContext(), marker, string)
 
 
+@assertNaifContext
 def errdev(op, lenout, device):
     """
     Retrieve or set the name of the current output device for error messages.
@@ -4927,10 +5172,11 @@ def errdev(op, lenout, device):
     op = stypes.stringToCharP(op)
     device = ctypes.create_string_buffer(str.encode(device), lenout.value)
     deviceptr = ctypes.c_char_p(ctypes.addressof(device))
-    libspice.errdev_c(_naif_context, op, lenout, deviceptr)
+    libspice.errdev_c(getNaifContext(), op, lenout, deviceptr)
     return stypes.toPythonString(deviceptr)
 
 
+@assertNaifContext
 def errdp(marker, number):
     """
     Substitute a double precision number for the first occurrence of
@@ -4945,9 +5191,10 @@ def errdp(marker, number):
     """
     marker = stypes.stringToCharP(marker)
     number = ctypes.c_double(number)
-    libspice.errdp_c(_naif_context, marker, number)
+    libspice.errdp_c(getNaifContext(), marker, number)
 
 
+@assertNaifContext
 def errint(marker, number):
     """
     Substitute an integer for the first occurrence of a marker found
@@ -4962,9 +5209,10 @@ def errint(marker, number):
     """
     marker = stypes.stringToCharP(marker)
     number = ctypes.c_int(number)
-    libspice.errint_c(_naif_context, marker, number)
+    libspice.errint_c(getNaifContext(), marker, number)
 
 
+@assertNaifContext
 def errprt(op, lenout, inlist):
     """
     Retrieve or set the list of error message items to be output when an
@@ -4985,10 +5233,11 @@ def errprt(op, lenout, inlist):
     op = stypes.stringToCharP(op)
     inlist = ctypes.create_string_buffer(str.encode(inlist), lenout.value)
     inlistptr = ctypes.c_char_p(ctypes.addressof(inlist))
-    libspice.errdev_c(_naif_context, op, lenout, inlistptr)
+    libspice.errdev_c(getNaifContext(), op, lenout, inlistptr)
     return stypes.toPythonString(inlistptr)
 
 
+@assertNaifContext
 def esrchc(value, array):
     """
     Search for a given value within a character string array.
@@ -5010,10 +5259,11 @@ def esrchc(value, array):
     ndim = ctypes.c_int(len(array))
     lenvals = ctypes.c_int(len(max(array, key=len)) + 1)
     array = stypes.listToCharArray(array, xLen=lenvals, yLen=ndim)
-    return libspice.esrchc_c(_naif_context, value, ndim, lenvals, array)
+    return libspice.esrchc_c(getNaifContext(), value, ndim, lenvals, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def et2lst(et, body, lon, typein, timlen=_default_len_out, ampmlen=_default_len_out):
     """
     Given an ephemeris epoch, compute the local solar time for
@@ -5052,7 +5302,7 @@ def et2lst(et, body, lon, typein, timlen=_default_len_out, ampmlen=_default_len_
     sc = ctypes.c_int()
     time = stypes.stringToCharP(timlen)
     ampm = stypes.stringToCharP(ampmlen)
-    libspice.et2lst_c(_naif_context, et, body, lon, typein, timlen, ampmlen,
+    libspice.et2lst_c(getNaifContext(), et, body, lon, typein, timlen, ampmlen,
                       ctypes.byref(hr), ctypes.byref(mn), ctypes.byref(sc),
                       time, ampm)
     return hr.value, mn.value, sc.value, stypes.toPythonString(
@@ -5060,6 +5310,7 @@ def et2lst(et, body, lon, typein, timlen=_default_len_out, ampmlen=_default_len_
 
 
 @spiceErrorCheck
+@assertNaifContext
 def et2utc(et, formatStr, prec, lenout=_default_len_out):
     """
     Convert an input time from ephemeris seconds past J2000
@@ -5085,16 +5336,17 @@ def et2utc(et, formatStr, prec, lenout=_default_len_out):
     if stypes.isiterable(et):
         results = []
         for t in et:
-            libspice.et2utc_c(_naif_context, ctypes.c_double(t), formatStr, prec, lenout, utcstr)
+            libspice.et2utc_c(getNaifContext(), ctypes.c_double(t), formatStr, prec, lenout, utcstr)
             checkForSpiceError(None)
             results.append(stypes.toPythonString(utcstr))
         return results
     else:
-        libspice.et2utc_c(_naif_context, ctypes.c_double(et), formatStr, prec, lenout, utcstr)
+        libspice.et2utc_c(getNaifContext(), ctypes.c_double(et), formatStr, prec, lenout, utcstr)
         return stypes.toPythonString(utcstr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def etcal(et, lenout=_default_len_out):
     """
     Convert from an ephemeris epoch measured in seconds past
@@ -5115,17 +5367,18 @@ def etcal(et, lenout=_default_len_out):
     if hasattr(et, "__iter__"):
         strings = []
         for t in et:
-            libspice.etcal_c(_naif_context, t, lenout, string)
+            libspice.etcal_c(getNaifContext(), t, lenout, string)
             checkForSpiceError(None)
             strings.append(stypes.toPythonString(string))
         return strings
     else:
         et = ctypes.c_double(et)
-        libspice.etcal_c(_naif_context, et, lenout, string)
+        libspice.etcal_c(getNaifContext(), et, lenout, string)
         return stypes.toPythonString(string)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eul2m(angle3, angle2, angle1, axis3, axis2, axis1):
     """
     Construct a rotation matrix from a set of Euler angles.
@@ -5154,11 +5407,12 @@ def eul2m(angle3, angle2, angle1, axis3, axis2, axis1):
     axis2 = ctypes.c_int(axis2)
     axis1 = ctypes.c_int(axis1)
     r = stypes.emptyDoubleMatrix()
-    libspice.eul2m_c(_naif_context, angle3, angle2, angle1, axis3, axis2, axis1, r)
+    libspice.eul2m_c(getNaifContext(), angle3, angle2, angle1, axis3, axis2, axis1, r)
     return stypes.cMatrixToNumpy(r)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def eul2xf(eulang, axisa, axisb, axisc):
     """
     This routine computes a state transformation from an Euler angle
@@ -5184,10 +5438,11 @@ def eul2xf(eulang, axisa, axisb, axisc):
     axisb = ctypes.c_int(axisb)
     axisc = ctypes.c_int(axisc)
     xform = stypes.emptyDoubleMatrix(x=6, y=6)
-    libspice.eul2xf_c(_naif_context, eulang, axisa, axisb, axisc, xform)
+    libspice.eul2xf_c(getNaifContext(), eulang, axisa, axisb, axisc, xform)
     return stypes.cMatrixToNumpy(xform)
 
 @spiceErrorCheck
+@assertNaifContext
 def ev2lin(et, geophs, elems):
     """
     This routine evaluates NORAD two-line element data for
@@ -5211,10 +5466,11 @@ def ev2lin(et, geophs, elems):
     assert len(elems) == 10
     elems = stypes.toDoubleVector(elems)
     state = stypes.emptyDoubleVector(6)
-    libspice.ev2lin_(_naif_context, ctypes.byref(et), geophs, elems, state)
+    libspice.ev2lin_(getNaifContext(), ctypes.byref(et), geophs, elems, state)
     return stypes.cVectorToPython(state)
 
 @spiceErrorCheck
+@assertNaifContext
 def exists(fname):
     """
     Determine whether a file exists.
@@ -5226,10 +5482,11 @@ def exists(fname):
     :rtype: bool
     """
     fname = stypes.stringToCharP(fname)
-    return bool(libspice.exists_c(_naif_context, fname))
+    return bool(libspice.exists_c(getNaifContext(), fname))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def expool(name):
     """
     Confirm the existence of a kernel variable in the kernel pool.
@@ -5243,7 +5500,7 @@ def expool(name):
     """
     name = stypes.stringToCharP(name)
     found = ctypes.c_int()
-    libspice.expool_c(_naif_context, name, ctypes.byref(found))
+    libspice.expool_c(getNaifContext(), name, ctypes.byref(found))
     return bool(found.value)
 
 
@@ -5251,6 +5508,7 @@ def expool(name):
 # F
 
 
+@assertNaifContext
 def failed():
     """
     True if an error condition has been signalled via sigerr_c.
@@ -5260,10 +5518,11 @@ def failed():
     :return: a boolean
     :rtype: bool
     """
-    return bool(libspice.failed_c(_naif_context))
+    return bool(libspice.failed_c(getNaifContext()))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def fn2lun(fname):
     """
     Internal undocumented command for mapping name of open file to
@@ -5279,11 +5538,12 @@ def fn2lun(fname):
     fnameP    = stypes.stringToCharP(fname)
     unit_out  = ctypes.c_int()
     fname_len = ctypes.c_int(len(fname)+1)
-    libspice.fn2lun_(_naif_context, fnameP,ctypes.byref(unit_out),fname_len)
+    libspice.fn2lun_(getNaifContext(), fnameP,ctypes.byref(unit_out),fname_len)
     return unit_out.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def fovray(inst, raydir, rframe, abcorr, observer, et):
     """
     Determine if a specified ray is within the field-of-view (FOV) of a
@@ -5313,12 +5573,13 @@ def fovray(inst, raydir, rframe, abcorr, observer, et):
     observer = stypes.stringToCharP(observer)
     et = ctypes.c_double(et)
     visible = ctypes.c_int()
-    libspice.fovray_c(_naif_context, inst, raydir, rframe, abcorr, observer, ctypes.byref(et),
+    libspice.fovray_c(getNaifContext(), inst, raydir, rframe, abcorr, observer, ctypes.byref(et),
                       ctypes.byref(visible))
     return bool(visible.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def fovtrg(inst, target, tshape, tframe, abcorr, observer, et):
     """
     Determine if a specified ephemeris object is within the field-of-view (FOV)
@@ -5351,12 +5612,13 @@ def fovtrg(inst, target, tshape, tframe, abcorr, observer, et):
     observer = stypes.stringToCharP(observer)
     et = ctypes.c_double(et)
     visible = ctypes.c_int()
-    libspice.fovtrg_c(_naif_context, inst, target, tshape, tframe, abcorr, observer,
+    libspice.fovtrg_c(getNaifContext(), inst, target, tshape, tframe, abcorr, observer,
                       ctypes.byref(et), ctypes.byref(visible))
     return bool(visible.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def frame(x):
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/frame_c.html
@@ -5369,13 +5631,14 @@ def frame(x):
     x = stypes.toDoubleVector(x)
     y = stypes.emptyDoubleVector(3)
     z = stypes.emptyDoubleVector(3)
-    libspice.frame_c(_naif_context, x, y, z)
+    libspice.frame_c(getNaifContext(), x, y, z)
     return stypes.cVectorToPython(x), stypes.cVectorToPython(y), stypes.cVectorToPython(
             z)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def frinfo(frcode):
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/frinfo_c.html
@@ -5390,12 +5653,13 @@ def frinfo(frcode):
     frclss = ctypes.c_int()
     clssid = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.frinfo_c(_naif_context, frcode, ctypes.byref(cent), ctypes.byref(frclss),
+    libspice.frinfo_c(getNaifContext(), frcode, ctypes.byref(cent), ctypes.byref(frclss),
                       ctypes.byref(clssid), ctypes.byref(found))
     return cent.value, frclss.value, clssid.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def frmnam(frcode, lenout=_default_len_out):
     """
     Retrieve the name of a reference frame associated with a SPICE ID code.
@@ -5412,11 +5676,12 @@ def frmnam(frcode, lenout=_default_len_out):
     frcode = ctypes.c_int(frcode)
     lenout = ctypes.c_int(lenout)
     frname = stypes.stringToCharP(lenout)
-    libspice.frmnam_c(_naif_context, frcode, lenout, frname)
+    libspice.frmnam_c(getNaifContext(), frcode, lenout, frname)
     return stypes.toPythonString(frname)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ftncls(unit):
     """
     Close a file designated by a Fortran-style integer logical unit.
@@ -5427,10 +5692,11 @@ def ftncls(unit):
     :type unit: int
     """
     unit = ctypes.c_int(unit)
-    libspice.ftncls_c(_naif_context, unit)
+    libspice.ftncls_c(getNaifContext(), unit)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def furnsh(path):
     """
     Load one or more SPICE kernels into a program.
@@ -5442,10 +5708,10 @@ def furnsh(path):
     """
     if stypes.isiterable(path):
         for p in path:
-            libspice.furnsh_c(_naif_context, stypes.stringToCharP(p))
+            libspice.furnsh_c(getNaifContext(), stypes.stringToCharP(p))
     else:
         path = stypes.stringToCharP(path)
-        libspice.furnsh_c(_naif_context, path)
+        libspice.furnsh_c(getNaifContext(), path)
 
 
 ################################################################################
@@ -5454,6 +5720,7 @@ def furnsh(path):
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def gcpool(name, start, room, lenout=_default_len_out):
     """
     Return the character value of a kernel variable from the kernel pool.
@@ -5478,7 +5745,7 @@ def gcpool(name, start, room, lenout=_default_len_out):
     n = ctypes.c_int()
     cvals = stypes.emptyCharArray(lenout, room)
     found = ctypes.c_int()
-    libspice.gcpool_c(_naif_context, name, start, room, lenout, ctypes.byref(n),
+    libspice.gcpool_c(getNaifContext(), name, start, room, lenout, ctypes.byref(n),
                       ctypes.byref(cvals), ctypes.byref(found))
     return [stypes.toPythonString(x.value) for x in
             cvals[0:n.value]], bool(found.value)
@@ -5486,6 +5753,7 @@ def gcpool(name, start, room, lenout=_default_len_out):
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def gdpool(name, start, room):
     """
     Return the d.p. value of a kernel variable from the kernel pool.
@@ -5507,13 +5775,14 @@ def gdpool(name, start, room):
     room = ctypes.c_int(room)
     n = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.gdpool_c(_naif_context, name, start, room, ctypes.byref(n),
+    libspice.gdpool_c(getNaifContext(), name, start, room, ctypes.byref(n),
                       ctypes.cast(values, ctypes.POINTER(ctypes.c_double)),
                       ctypes.byref(found))
     return stypes.cVectorToPython(values)[0:n.value], bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def georec(lon, lat, alt, re, f):
     """
     Convert geodetic coordinates to rectangular coordinates.
@@ -5539,7 +5808,7 @@ def georec(lon, lat, alt, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.georec_c(_naif_context, lon, lat, alt, re, f, rectan)
+    libspice.georec_c(getNaifContext(), lon, lat, alt, re, f, rectan)
     return stypes.cVectorToPython(rectan)
 
 
@@ -5547,6 +5816,7 @@ def georec(lon, lat, alt, re, f):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def getelm(frstyr, lineln, lines):
     """
     Given a the "lines" of a two-line element set, parse the
@@ -5571,11 +5841,12 @@ def getelm(frstyr, lineln, lines):
     lines = stypes.listToCharArrayPtr(lines, xLen=lineln, yLen=2)
     epoch = ctypes.c_double()
     elems = stypes.emptyDoubleVector(10)  # guess for length
-    libspice.getelm_c(_naif_context, frstyr, lineln, lines, ctypes.byref(epoch), elems)
+    libspice.getelm_c(getNaifContext(), frstyr, lineln, lines, ctypes.byref(epoch), elems)
     return epoch.value, stypes.cVectorToPython(elems)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def getfat(file):
     """
     Determine the file architecture and file type of most SPICE kernel files.
@@ -5592,11 +5863,12 @@ def getfat(file):
     typlen = ctypes.c_int(4)
     arch = stypes.stringToCharP(arclen)
     rettype = stypes.stringToCharP(typlen)
-    libspice.getfat_c(_naif_context, file, arclen, typlen, arch, rettype)
+    libspice.getfat_c(getNaifContext(), file, arclen, typlen, arch, rettype)
     return stypes.toPythonString(arch), stypes.toPythonString(rettype)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def getfov(instid, room, shapelen=_default_len_out, framelen=_default_len_out):
     """
     This routine returns the field-of-view (FOV) parameters for a
@@ -5629,13 +5901,14 @@ def getfov(instid, room, shapelen=_default_len_out, framelen=_default_len_out):
     n = ctypes.c_int()
     bounds = stypes.emptyDoubleMatrix(x=3, y=room)
     room = ctypes.c_int(room)
-    libspice.getfov_c(_naif_context, instid, room, shapelen, framelen, shape, framen, bsight,
+    libspice.getfov_c(getNaifContext(), instid, room, shapelen, framelen, shape, framen, bsight,
                       ctypes.byref(n), bounds)
     return stypes.toPythonString(shape), stypes.toPythonString(
             framen), stypes.cVectorToPython(
             bsight), n.value, stypes.cMatrixToNumpy(bounds)[0:n.value]
 
 
+@assertNaifContext
 def getmsg(option, lenout=_default_len_out):
     """
     Retrieve the current short error message,
@@ -5654,11 +5927,12 @@ def getmsg(option, lenout=_default_len_out):
     option = stypes.stringToCharP(option)
     lenout = ctypes.c_int(lenout)
     msg = stypes.stringToCharP(lenout)
-    libspice.getmsg_c(_naif_context, option, lenout, msg)
+    libspice.getmsg_c(getNaifContext(), option, lenout, msg)
     return stypes.toPythonString(msg)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfbail():
     """
     Indicate whether an interrupt signal (SIGINT) has been received.
@@ -5668,10 +5942,11 @@ def gfbail():
     :return: True if an interrupt signal has been received by the GF handler.
     :rtype: bool
     """
-    return bool(libspice.gfbail_c(_naif_context))
+    return bool(libspice.gfbail_c(getNaifContext()))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfclrh():
     """
     Clear the interrupt signal handler status, so that future calls
@@ -5680,10 +5955,11 @@ def gfclrh():
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/gfclrh_c.html
 
     """
-    libspice.gfclrh_c(_naif_context)
+    libspice.gfclrh_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfdist(target, abcorr, obsrvr, relate, refval, adjust, step, nintvls,
            cnfine, result=None):
     """
@@ -5728,12 +6004,13 @@ def gfdist(target, abcorr, obsrvr, relate, refval, adjust, step, nintvls,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvls = ctypes.c_int(nintvls)
-    libspice.gfdist_c(_naif_context, target, abcorr, obsrvr, relate, refval, adjust,
+    libspice.gfdist_c(getNaifContext(), target, abcorr, obsrvr, relate, refval, adjust,
                       step, nintvls, ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfevnt(udstep, udrefn, gquant, qnpars, lenvals, qpnams,
            qcpars, qdpars, qipars, qlpars, op, refval,
            tol, adjust, rpt, udrepi, udrepu, udrepf,
@@ -5813,7 +6090,7 @@ def gfevnt(udstep, udrefn, gquant, qnpars, lenvals, qpnams,
     rpt     = ctypes.c_int(rpt)
     nintvls = ctypes.c_int(nintvls)
     bail    = ctypes.c_int(bail)
-    libspice.gfevnt_c(_naif_context, udstep, udrefn, gquant, qnpars, lenvals, qpnams, qcpars,
+    libspice.gfevnt_c(getNaifContext(), udstep, udrefn, gquant, qnpars, lenvals, qpnams, qcpars,
                       qdpars, qipars, qlpars, op, refval, tol,
                       adjust, rpt, udrepi, udrepu, udrepf, nintvls, bail,
                       udbail, ctypes.byref(cnfine), ctypes.byref(result))
@@ -5821,6 +6098,7 @@ def gfevnt(udstep, udrefn, gquant, qnpars, lenvals, qpnams,
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gffove(inst, tshape, raydir, target, tframe, abcorr, obsrvr,
            tol, udstep, udrefn, rpt, udrepi, udrepu, udrepf, bail, udbail, cnfine, result=None):
     """
@@ -5885,7 +6163,7 @@ def gffove(inst, tshape, raydir, target, tframe, abcorr, obsrvr,
     tol = ctypes.c_double(tol)
     rpt = ctypes.c_int(rpt)
     bail = ctypes.c_int(bail)
-    libspice.gffove_c(_naif_context, inst, tshape, raydir, target, tframe,
+    libspice.gffove_c(getNaifContext(), inst, tshape, raydir, target, tframe,
                       abcorr, obsrvr, tol, udstep, udrefn, rpt,
                       udrepi, udrepu, udrepf, bail, udbail,
                       ctypes.byref(cnfine), ctypes.byref(result))
@@ -5893,6 +6171,7 @@ def gffove(inst, tshape, raydir, target, tframe, abcorr, obsrvr,
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfilum(method, angtyp, target, illumn,
            fixref, abcorr, obsrvr, spoint,
            relate, refval, adjust, step, nintvls, cnfine, result=None):
@@ -5952,7 +6231,7 @@ def gfilum(method, angtyp, target, illumn,
     adjust = ctypes.c_double(adjust)
     step   = ctypes.c_double(step)
     nintvls = ctypes.c_int(nintvls)
-    libspice.gfilum_c(_naif_context, method, angtyp, target, illumn,
+    libspice.gfilum_c(getNaifContext(), method, angtyp, target, illumn,
                       fixref, abcorr, obsrvr, spoint,
                       relate, refval, adjust, step,
                       nintvls, ctypes.byref(cnfine), ctypes.byref(result))
@@ -5960,6 +6239,7 @@ def gfilum(method, angtyp, target, illumn,
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfinth(sigcode):
     """
     Respond to the interrupt signal SIGINT: save an indication
@@ -5972,10 +6252,11 @@ def gfinth(sigcode):
     :type sigcode: int
     """
     sigcode = ctypes.c_int(sigcode)
-    libspice.gfinth_c(_naif_context, sigcode)
+    libspice.gfinth_c(getNaifContext(), sigcode)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfocce(occtyp, front, fshape, fframe, back,
            bshape, bframe, abcorr, obsrvr, tol,
            udstep, udrefn, rpt, udrepi, udrepu,
@@ -6050,13 +6331,14 @@ def gfocce(occtyp, front, fshape, fframe, back,
     tol = ctypes.c_double(tol)
     rpt = ctypes.c_int(rpt)
     bail = ctypes.c_int(bail)
-    libspice.gfocce_c(_naif_context, occtyp, front, fshape, fframe, back,
+    libspice.gfocce_c(getNaifContext(), occtyp, front, fshape, fframe, back,
                       bshape, bframe, abcorr, obsrvr, tol,
                       udstep, udrefn, rpt, udrepi, udrepu, udrepf,
                       bail, udbail, ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 @spiceErrorCheck
+@assertNaifContext
 def gfoclt(occtyp, front, fshape, fframe, back, bshape, bframe, abcorr, obsrvr,
            step, cnfine, result=None):
     """
@@ -6107,13 +6389,14 @@ def gfoclt(occtyp, front, fshape, fframe, back, bshape, bframe, abcorr, obsrvr,
     abcorr = stypes.stringToCharP(abcorr)
     obsrvr = stypes.stringToCharP(obsrvr)
     step = ctypes.c_double(step)
-    libspice.gfoclt_c(_naif_context, occtyp, front, fshape, fframe, back, bshape, bframe,
+    libspice.gfoclt_c(getNaifContext(), occtyp, front, fshape, fframe, back, bshape, bframe,
                       abcorr, obsrvr, step, ctypes.byref(cnfine),
                       ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfpa(target, illmin, abcorr, obsrvr, relate, refval, adjust, step, nintvals,
          cnfine, result=None):
     """
@@ -6162,13 +6445,14 @@ def gfpa(target, illmin, abcorr, obsrvr, relate, refval, adjust, step, nintvals,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfpa_c(_naif_context, target, illmin, abcorr, obsrvr, relate, refval,
+    libspice.gfpa_c(getNaifContext(), target, illmin, abcorr, obsrvr, relate, refval,
                     adjust, step, nintvals, ctypes.byref(cnfine),
                     ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfposc(target, inframe, abcorr, obsrvr, crdsys, coord, relate, refval,
            adjust, step, nintvals, cnfine, result=None):
     """
@@ -6222,13 +6506,14 @@ def gfposc(target, inframe, abcorr, obsrvr, crdsys, coord, relate, refval,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfposc_c(_naif_context, target, inframe, abcorr, obsrvr, crdsys, coord,
+    libspice.gfposc_c(getNaifContext(), target, inframe, abcorr, obsrvr, crdsys, coord,
                       relate, refval, adjust, step, nintvals,
                       ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrefn(t1, t2, s1, s2):
     """
     For those times when we can't do better, we use a bisection
@@ -6252,11 +6537,12 @@ def gfrefn(t1, t2, s1, s2):
     s1 = ctypes.c_int(s1)
     s2 = ctypes.c_int(s2)
     t = ctypes.c_double()
-    libspice.gfrefn_c(_naif_context, t1, t2, s1, s2, ctypes.byref(t))
+    libspice.gfrefn_c(getNaifContext(), t1, t2, s1, s2, ctypes.byref(t))
     return t.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrepf():
     """
     Finish a GF progress report.
@@ -6264,10 +6550,11 @@ def gfrepf():
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/gfrepf_c.html
 
     """
-    libspice.gfrepf_c(_naif_context)
+    libspice.gfrepf_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrepi(window, begmss, endmss):
     """
     This entry point initializes a search progress report.
@@ -6288,10 +6575,11 @@ def gfrepi(window, begmss, endmss):
         assert isinstance(window, stypes.SpiceCell)
         assert window.is_double()
         window = ctypes.byref(window)
-    libspice.gfrepi_c(_naif_context, window, begmss, endmss)
+    libspice.gfrepi_c(getNaifContext(), window, begmss, endmss)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrepu(ivbeg, ivend, time):
     """
     This function tells the progress reporting system
@@ -6309,10 +6597,11 @@ def gfrepu(ivbeg, ivend, time):
     ivbeg = ctypes.c_double(ivbeg)
     ivend = ctypes.c_double(ivend)
     time = ctypes.c_double(time)
-    libspice.gfrepu_c(_naif_context, ivbeg, ivend, time)
+    libspice.gfrepu_c(getNaifContext(), ivbeg, ivend, time)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrfov(inst, raydir, rframe, abcorr, obsrvr, step, cnfine, result=None):
     """
     Determine time intervals when a specified ray intersects the
@@ -6351,12 +6640,13 @@ def gfrfov(inst, raydir, rframe, abcorr, obsrvr, step, cnfine, result=None):
     abcorr = stypes.stringToCharP(abcorr)
     obsrvr = stypes.stringToCharP(obsrvr)
     step = ctypes.c_double(step)
-    libspice.gfrfov_c(_naif_context, inst, raydir, rframe, abcorr, obsrvr, step,
+    libspice.gfrfov_c(getNaifContext(), inst, raydir, rframe, abcorr, obsrvr, step,
                       ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfrr(target, abcorr, obsrvr, relate, refval, adjust, step, nintvals, cnfine,
          result):
     """
@@ -6401,13 +6691,14 @@ def gfrr(target, abcorr, obsrvr, relate, refval, adjust, step, nintvals, cnfine,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfrr_c(_naif_context, target, abcorr, obsrvr, relate, refval,
+    libspice.gfrr_c(getNaifContext(), target, abcorr, obsrvr, relate, refval,
                     adjust, step, nintvals, ctypes.byref(cnfine),
                     ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfsep(targ1, shape1, inframe1, targ2, shape2, inframe2, abcorr, obsrvr,
           relate, refval, adjust, step, nintvals, cnfine, result=None):
     """
@@ -6468,13 +6759,14 @@ def gfsep(targ1, shape1, inframe1, targ2, shape2, inframe2, abcorr, obsrvr,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfsep_c(_naif_context, targ1, shape1, inframe1, targ2, shape2, inframe2,
+    libspice.gfsep_c(getNaifContext(), targ1, shape1, inframe1, targ2, shape2, inframe2,
                      abcorr, obsrvr, relate, refval, adjust, step, nintvals,
                      ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfsntc(target, fixref, method, abcorr, obsrvr, dref, dvec, crdsys, coord,
            relate, refval, adjust, step, nintvals,
            cnfine, result=None):
@@ -6538,7 +6830,7 @@ def gfsntc(target, fixref, method, abcorr, obsrvr, dref, dvec, crdsys, coord,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfsntc_c(_naif_context, target, fixref, method, abcorr, obsrvr,
+    libspice.gfsntc_c(getNaifContext(), target, fixref, method, abcorr, obsrvr,
                       dref, dvec, crdsys, coord, relate, refval,
                       adjust, step, nintvals, ctypes.byref(cnfine),
                       ctypes.byref(result))
@@ -6546,6 +6838,7 @@ def gfsntc(target, fixref, method, abcorr, obsrvr, dref, dvec, crdsys, coord,
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfsstp(step):
     """
     Set the step size to be returned by :func:`gfstep`.
@@ -6556,10 +6849,11 @@ def gfsstp(step):
     :type step: float
     """
     step = ctypes.c_double(step)
-    libspice.gfsstp_c(_naif_context, step)
+    libspice.gfsstp_c(getNaifContext(), step)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfstep(time):
     """
     Return the time step set by the most recent call to :func:`gfsstp`.
@@ -6573,11 +6867,12 @@ def gfstep(time):
     """
     time = ctypes.c_double(time)
     step = ctypes.c_double()
-    libspice.gfstep_c(_naif_context, time, ctypes.byref(step))
+    libspice.gfstep_c(getNaifContext(), time, ctypes.byref(step))
     return step.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfstol(value):
     """
     Override the default GF convergence
@@ -6591,10 +6886,11 @@ def gfstol(value):
     :type value: float
     """
     value = ctypes.c_double(value)
-    libspice.gfstol_c(_naif_context, value)
+    libspice.gfstol_c(getNaifContext(), value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfsubc(target, fixref, method, abcorr, obsrvr, crdsys, coord, relate,
            refval, adjust, step, nintvals, cnfine,
            result):
@@ -6652,13 +6948,14 @@ def gfsubc(target, fixref, method, abcorr, obsrvr, crdsys, coord, relate,
     adjust = ctypes.c_double(adjust)
     step = ctypes.c_double(step)
     nintvals = ctypes.c_int(nintvals)
-    libspice.gfsubc_c(_naif_context, target, fixref, method, abcorr, obsrvr, crdsys,
+    libspice.gfsubc_c(getNaifContext(), target, fixref, method, abcorr, obsrvr, crdsys,
                       coord, relate, refval, adjust, step, nintvals,
                       ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gftfov(inst, target, tshape, tframe, abcorr, obsrvr, step, cnfine, result=None):
     """
     Determine time intervals when a specified ephemeris object
@@ -6700,12 +6997,13 @@ def gftfov(inst, target, tshape, tframe, abcorr, obsrvr, step, cnfine, result=No
     abcorr = stypes.stringToCharP(abcorr)
     obsrvr = stypes.stringToCharP(obsrvr)
     step = ctypes.c_double(step)
-    libspice.gftfov_c(_naif_context, inst, target, tshape, tframe, abcorr, obsrvr, step,
+    libspice.gftfov_c(getNaifContext(), inst, target, tshape, tframe, abcorr, obsrvr, step,
                       ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfudb(udfuns, udfunb, step, cnfine, result):
     """
     Perform a GF search on a user defined boolean quantity.
@@ -6726,10 +7024,11 @@ def gfudb(udfuns, udfunb, step, cnfine, result):
     :rtype: spiceypy.utils.support_types.SpiceCell
     """
     step = ctypes.c_double(step)
-    libspice.gfudb_c(_naif_context, udfuns, udfunb, step, ctypes.byref(cnfine), ctypes.byref(result))
+    libspice.gfudb_c(getNaifContext(), udfuns, udfunb, step, ctypes.byref(cnfine), ctypes.byref(result))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def gfuds(udfuns, udqdec, relate, refval, adjust, step, nintvls, cnfine, result):
     """
     Perform a GF search on a user defined scalar quantity.
@@ -6762,12 +7061,13 @@ def gfuds(udfuns, udqdec, relate, refval, adjust, step, nintvls, cnfine, result)
     adjust  = ctypes.c_double(adjust)
     step    = ctypes.c_double(step)
     nintvls = ctypes.c_int(nintvls)
-    libspice.gfuds_c(_naif_context, udfuns, udqdec, relate, refval, adjust, step, nintvls, ctypes.byref(cnfine), ctypes.byref(result))
+    libspice.gfuds_c(getNaifContext(), udfuns, udqdec, relate, refval, adjust, step, nintvls, ctypes.byref(cnfine), ctypes.byref(result))
     return result
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def gipool(name, start, room):
     """
     Return the integer value of a kernel variable from the kernel pool.
@@ -6789,13 +7089,14 @@ def gipool(name, start, room):
     room = ctypes.c_int(room)
     n = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.gipool_c(_naif_context, name, start, room, ctypes.byref(n), ivals,
+    libspice.gipool_c(getNaifContext(), name, start, room, ctypes.byref(n), ivals,
                       ctypes.byref(found))
     return stypes.cVectorToPython(ivals)[0:n.value], bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def gnpool(name, start, room, lenout=_default_len_out):
     """
     Return names of kernel variables matching a specified template.
@@ -6820,7 +7121,7 @@ def gnpool(name, start, room, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     n = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.gnpool_c(_naif_context, name, start, room, lenout, ctypes.byref(n), kvars,
+    libspice.gnpool_c(getNaifContext(), name, start, room, lenout, ctypes.byref(n), kvars,
                       ctypes.byref(found))
     return stypes.cVectorToPython(kvars)[0:n.value], bool(found.value)
 
@@ -6830,6 +7131,7 @@ def gnpool(name, start, room, lenout=_default_len_out):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def halfpi():
     """
     Return half the value of pi (the ratio of the circumference of
@@ -6840,10 +7142,11 @@ def halfpi():
     :return: Half the value of pi.
     :rtype: float
     """
-    return libspice.halfpi_c(_naif_context)
+    return libspice.halfpi_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def hrmint(xvals, yvals, x):
     """
     Evaluate a Hermite interpolating polynomial at a specified
@@ -6867,11 +7170,12 @@ def hrmint(xvals, yvals, x):
     x     = ctypes.c_double(x)
     f     = ctypes.c_double(0)
     df    = ctypes.c_double(0)
-    libspice.hrmint_c(_naif_context, n, xvals, yvals, x, work, f, df)
+    libspice.hrmint_c(getNaifContext(), n, xvals, yvals, x, work, f, df)
     return f.value, df.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def hx2dp(string):
     """
     Convert a string representing a double precision number in a
@@ -6890,7 +7194,7 @@ def hx2dp(string):
     errmsg = stypes.stringToCharP(lenout)
     number = ctypes.c_double()
     error = ctypes.c_int()
-    libspice.hx2dp_c(_naif_context, string, lenout, ctypes.byref(number), ctypes.byref(error),
+    libspice.hx2dp_c(getNaifContext(), string, lenout, ctypes.byref(number), ctypes.byref(error),
                      errmsg)
     if not error.value:
         return number.value
@@ -6903,6 +7207,7 @@ def hx2dp(string):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ident():
     """
     This routine returns the 3x3 identity matrix.
@@ -6913,11 +7218,12 @@ def ident():
     :rtype: 3x3-Element Array of floats
     """
     matrix = stypes.emptyDoubleMatrix()
-    libspice.ident_c(_naif_context, matrix)
+    libspice.ident_c(getNaifContext(), matrix)
     return stypes.cMatrixToNumpy(matrix)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def illum(target, et, abcorr, obsrvr, spoint):
     """
     Deprecated: This routine has been superseded by the CSPICE
@@ -6953,12 +7259,13 @@ def illum(target, et, abcorr, obsrvr, spoint):
     phase = ctypes.c_double(0)
     solar = ctypes.c_double(0)
     emissn = ctypes.c_double(0)
-    libspice.illum_c(_naif_context, target, et, abcorr, obsrvr, spoint, ctypes.byref(phase),
+    libspice.illum_c(getNaifContext(), target, et, abcorr, obsrvr, spoint, ctypes.byref(phase),
                      ctypes.byref(solar), ctypes.byref(emissn))
     return phase.value, solar.value, emissn.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def illumf(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
     """
     Compute the illumination angles---phase, incidence, and
@@ -7011,7 +7318,7 @@ def illumf(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
     emissn = ctypes.c_double(0)
     visibl = ctypes.c_int()
     lit    = ctypes.c_int()
-    libspice.illumf_c(_naif_context, method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint,
+    libspice.illumf_c(getNaifContext(), method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint,
                       ctypes.byref(trgepc), srfvec, ctypes.byref(phase),
                       ctypes.byref(incdnc), ctypes.byref(emissn),
                       ctypes.byref(visibl), ctypes.byref(lit))
@@ -7020,6 +7327,7 @@ def illumf(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def illumg(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
     """
     Find the illumination angles (phase, incidence, and 
@@ -7066,7 +7374,7 @@ def illumg(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
     phase  = ctypes.c_double(0)
     incdnc = ctypes.c_double(0)
     emissn = ctypes.c_double(0)
-    libspice.illumg_c(_naif_context, method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint,
+    libspice.illumg_c(getNaifContext(), method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint,
                       ctypes.byref(trgepc), srfvec, ctypes.byref(phase),
                       ctypes.byref(incdnc), ctypes.byref(emissn))
     return trgepc.value, stypes.cVectorToPython(srfvec), \
@@ -7074,6 +7382,7 @@ def illumg(method, target, ilusrc, et, fixref, abcorr, obsrvr, spoint):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ilumin(method, target, et, fixref, abcorr, obsrvr, spoint):
     """
     Find the illumination angles (phase, solar incidence, and
@@ -7114,7 +7423,7 @@ def ilumin(method, target, et, fixref, abcorr, obsrvr, spoint):
     phase = ctypes.c_double(0)
     solar = ctypes.c_double(0)
     emissn = ctypes.c_double(0)
-    libspice.ilumin_c(_naif_context, method, target, et, fixref, abcorr, obsrvr, spoint,
+    libspice.ilumin_c(getNaifContext(), method, target, et, fixref, abcorr, obsrvr, spoint,
                       ctypes.byref(trgepc),
                       srfvec, ctypes.byref(phase), ctypes.byref(solar),
                       ctypes.byref(emissn))
@@ -7124,6 +7433,7 @@ def ilumin(method, target, et, fixref, abcorr, obsrvr, spoint):
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def inedpl(a, b, c, plane):
     """
     Find the intersection of a triaxial ellipsoid and a plane.
@@ -7147,12 +7457,13 @@ def inedpl(a, b, c, plane):
     b = ctypes.c_double(b)
     c = ctypes.c_double(c)
     found = ctypes.c_int()
-    libspice.inedpl_c(_naif_context, a, b, c, ctypes.byref(plane), ctypes.byref(ellipse),
+    libspice.inedpl_c(getNaifContext(), a, b, c, ctypes.byref(plane), ctypes.byref(ellipse),
                       ctypes.byref(found))
     return ellipse, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def inelpl(ellips, plane):
     """
     Find the intersection of an ellipse and a plane.
@@ -7174,12 +7485,13 @@ def inelpl(ellips, plane):
     nxpts = ctypes.c_int()
     xpt1 = stypes.emptyDoubleVector(3)
     xpt2 = stypes.emptyDoubleVector(3)
-    libspice.inelpl_c(_naif_context, ctypes.byref(ellips), ctypes.byref(plane),
+    libspice.inelpl_c(getNaifContext(), ctypes.byref(ellips), ctypes.byref(plane),
                       ctypes.byref(nxpts), xpt1, xpt2)
     return nxpts.value, stypes.cVectorToPython(xpt1), stypes.cVectorToPython(xpt2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def inrypl(vertex, direct, plane):
     """
     Find the intersection of a ray and a plane.
@@ -7203,12 +7515,13 @@ def inrypl(vertex, direct, plane):
     direct = stypes.toDoubleVector(direct)
     nxpts = ctypes.c_int()
     xpt = stypes.emptyDoubleVector(3)
-    libspice.inrypl_c(_naif_context, vertex, direct, ctypes.byref(plane), ctypes.byref(nxpts),
+    libspice.inrypl_c(getNaifContext(), vertex, direct, ctypes.byref(plane), ctypes.byref(nxpts),
                       xpt)
     return nxpts.value, stypes.cVectorToPython(xpt)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def insrtc(item, inset):
     """
     Insert an item into a character set.
@@ -7223,13 +7536,14 @@ def insrtc(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     if stypes.isiterable(item):
         for c in item:
-            libspice.insrtc_c(_naif_context, stypes.stringToCharP(c), ctypes.byref(inset))
+            libspice.insrtc_c(getNaifContext(), stypes.stringToCharP(c), ctypes.byref(inset))
     else:
         item = stypes.stringToCharP(item)
-        libspice.insrtc_c(_naif_context, item, ctypes.byref(inset))
+        libspice.insrtc_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def insrtd(item, inset):
     """
     Insert an item into a double precision set.
@@ -7244,13 +7558,14 @@ def insrtd(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     if hasattr(item, "__iter__"):
         for d in item:
-            libspice.insrtd_c(_naif_context, ctypes.c_double(d), ctypes.byref(inset))
+            libspice.insrtd_c(getNaifContext(), ctypes.c_double(d), ctypes.byref(inset))
     else:
         item = ctypes.c_double(item)
-        libspice.insrtd_c(_naif_context, item, ctypes.byref(inset))
+        libspice.insrtd_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def insrti(item, inset):
     """
     Insert an item into an integer set.
@@ -7265,13 +7580,14 @@ def insrti(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     if hasattr(item, "__iter__"):
         for i in item:
-            libspice.insrti_c(_naif_context, ctypes.c_int(i), ctypes.byref(inset))
+            libspice.insrti_c(getNaifContext(), ctypes.c_int(i), ctypes.byref(inset))
     else:
         item = ctypes.c_int(item)
-        libspice.insrti_c(_naif_context, item, ctypes.byref(inset))
+        libspice.insrti_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def inter(a, b):
     """
     Intersect two sets of any data type to form a third set.
@@ -7298,11 +7614,12 @@ def inter(a, b):
         c = stypes.SPICEINT_CELL(max(a.size, b.size))
     else:
         raise NotImplementedError
-    libspice.inter_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.inter_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def intmax():
     """
     Return the value of the largest (positive) number representable
@@ -7313,10 +7630,11 @@ def intmax():
     :return: The largest (positive) number representablein a Int variable.
     :rtype: int
     """
-    return libspice.intmax_c(_naif_context)
+    return libspice.intmax_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def intmin():
     """
     Return the value of the smallest (negative) number representable
@@ -7327,10 +7645,11 @@ def intmin():
     :return: The smallest (negative) number representablein a Int variable.
     :rtype: int
     """
-    return libspice.intmin_c(_naif_context)
+    return libspice.intmin_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def invert(m):
     """
     Generate the inverse of a 3x3 matrix.
@@ -7344,11 +7663,12 @@ def invert(m):
     """
     m = stypes.toDoubleMatrix(m)
     mout = stypes.emptyDoubleMatrix()
-    libspice.invert_c(_naif_context, m, mout)
+    libspice.invert_c(getNaifContext(), m, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def invort(m):
     """
     Given a matrix, construct the matrix whose rows are the
@@ -7364,11 +7684,12 @@ def invort(m):
     """
     m = stypes.toDoubleMatrix(m)
     mout = stypes.emptyDoubleMatrix()
-    libspice.invort_c(_naif_context, m, mout)
+    libspice.invort_c(getNaifContext(), m, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def isordv(array, n):
     """
     Determine whether an array of n items contains the integers
@@ -7387,10 +7708,11 @@ def isordv(array, n):
     """
     array = stypes.toIntVector(array)
     n = ctypes.c_int(n)
-    return bool(libspice.isordv_c(_naif_context, array, n))
+    return bool(libspice.isordv_c(getNaifContext(), array, n))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def isrchc(value, ndim, lenvals, array):
     """
     Search for a given value within a character string array. Return
@@ -7416,10 +7738,11 @@ def isrchc(value, ndim, lenvals, array):
     array = stypes.listToCharArrayPtr(array, xLen=lenvals, yLen=ndim)
     ndim = ctypes.c_int(ndim)
     lenvals = ctypes.c_int(lenvals)
-    return libspice.isrchc_c(_naif_context, value, ndim, lenvals, array)
+    return libspice.isrchc_c(getNaifContext(), value, ndim, lenvals, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def isrchd(value, ndim, array):
     """
     Search for a given value within a double precision array. Return
@@ -7442,10 +7765,11 @@ def isrchd(value, ndim, array):
     value = ctypes.c_double(value)
     ndim = ctypes.c_int(ndim)
     array = stypes.toDoubleVector(array)
-    return libspice.isrchd_c(_naif_context, value, ndim, array)
+    return libspice.isrchd_c(getNaifContext(), value, ndim, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def isrchi(value, ndim, array):
     """
     Search for a given value within an integer array. Return
@@ -7468,10 +7792,11 @@ def isrchi(value, ndim, array):
     value = ctypes.c_int(value)
     ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
-    return libspice.isrchi_c(_naif_context, value, ndim, array)
+    return libspice.isrchi_c(getNaifContext(), value, ndim, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def isrot(m, ntol, dtol):
     """
     Indicate whether a 3x3 matrix is a rotation matrix.
@@ -7492,10 +7817,11 @@ def isrot(m, ntol, dtol):
     m = stypes.toDoubleMatrix(m)
     ntol = ctypes.c_double(ntol)
     dtol = ctypes.c_double(dtol)
-    return bool(libspice.isrot_c(_naif_context, m, ntol, dtol))
+    return bool(libspice.isrot_c(getNaifContext(), m, ntol, dtol))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def iswhsp(string):
     """
     Return a boolean value indicating whether a string contains
@@ -7511,7 +7837,7 @@ def iswhsp(string):
     :rtype: bool
     """
     string = stypes.stringToCharP(string)
-    return bool(libspice.iswhsp_c(_naif_context, string))
+    return bool(libspice.iswhsp_c(getNaifContext(), string))
 
 
 ################################################################################
@@ -7519,6 +7845,7 @@ def iswhsp(string):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def j1900():
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/j1900_c.html
@@ -7526,10 +7853,11 @@ def j1900():
     :return: Julian Date of 1899 DEC 31 12:00:00
     :rtype: float
     """
-    return libspice.j1900_c(_naif_context)
+    return libspice.j1900_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def j1950():
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/j1950_c.html
@@ -7537,10 +7865,11 @@ def j1950():
     :return: Julian Date of 1950 JAN 01 00:00:00
     :rtype: float
     """
-    return libspice.j1950_c(_naif_context)
+    return libspice.j1950_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def j2000():
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/j2000_c.html
@@ -7548,10 +7877,11 @@ def j2000():
     :return: Julian Date of 2000 JAN 01 12:00:00
     :rtype: float
     """
-    return libspice.j2000_c(_naif_context)
+    return libspice.j2000_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def j2100():
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/j2100_c.html
@@ -7559,10 +7889,11 @@ def j2100():
     :return: Julian Date of 2100 JAN 01 12:00:00
     :rtype: float
     """
-    return libspice.j2100_c(_naif_context)
+    return libspice.j2100_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def jyear():
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/jyear_c.html
@@ -7570,7 +7901,7 @@ def jyear():
     :return: number of seconds in a julian year
     :rtype: float
     """
-    return libspice.jyear_c(_naif_context)
+    return libspice.jyear_c(getNaifContext())
 
 
 ################################################################################
@@ -7578,6 +7909,7 @@ def jyear():
 
 
 @spiceErrorCheck
+@assertNaifContext
 def kclear():
     """
     Clear the KEEPER subsystem: unload all kernels, clear the kernel
@@ -7587,11 +7919,12 @@ def kclear():
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/kclear_c.html
 
     """
-    libspice.kclear_c(_naif_context)
+    libspice.kclear_c(getNaifContext())
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def kdata(which, kind, fillen=_default_len_out, typlen=_default_len_out, srclen=_default_len_out):
     """
     Return data for the nth kernel that is among a list of specified
@@ -7625,7 +7958,7 @@ def kdata(which, kind, fillen=_default_len_out, typlen=_default_len_out, srclen=
     source = stypes.stringToCharP(srclen)
     handle = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.kdata_c(_naif_context, which, kind, fillen, typlen, srclen, file, filtyp, source,
+    libspice.kdata_c(getNaifContext(), which, kind, fillen, typlen, srclen, file, filtyp, source,
                      ctypes.byref(handle), ctypes.byref(found))
     return stypes.toPythonString(file), stypes.toPythonString(
             filtyp), stypes.toPythonString(source), handle.value, bool(found.value)
@@ -7633,6 +7966,7 @@ def kdata(which, kind, fillen=_default_len_out, typlen=_default_len_out, srclen=
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def kinfo(file, typlen=_default_len_out, srclen=_default_len_out):
     """
     Return information about a loaded kernel specified by name.
@@ -7658,13 +7992,14 @@ def kinfo(file, typlen=_default_len_out, srclen=_default_len_out):
     source = stypes.stringToCharP(" " * srclen.value)
     handle = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.kinfo_c(_naif_context, file, typlen, srclen, filtyp, source, ctypes.byref(handle),
+    libspice.kinfo_c(getNaifContext(), file, typlen, srclen, filtyp, source, ctypes.byref(handle),
                      ctypes.byref(found))
     return stypes.toPythonString(filtyp), stypes.toPythonString(
             source), handle.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def kplfrm(frmcls, outCell=None):
     """
     Return a SPICE set containing the frame IDs of all reference
@@ -7682,11 +8017,12 @@ def kplfrm(frmcls, outCell=None):
     if not outCell:
         outCell = stypes.SPICEINT_CELL(1000)
     frmcls = ctypes.c_int(frmcls)
-    libspice.kplfrm_c(_naif_context, frmcls, ctypes.byref(outCell))
+    libspice.kplfrm_c(getNaifContext(), frmcls, ctypes.byref(outCell))
     return outCell
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ktotal(kind):
     """
     Return the current number of kernels that have been loaded
@@ -7701,12 +8037,13 @@ def ktotal(kind):
     """
     kind = stypes.stringToCharP(kind)
     count = ctypes.c_int()
-    libspice.ktotal_c(_naif_context, kind, ctypes.byref(count))
+    libspice.ktotal_c(getNaifContext(), kind, ctypes.byref(count))
     return count.value
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def kxtrct(keywd, terms, nterms, instring, termlen=_default_len_out, stringlen=_default_len_out, substrlen=_default_len_out):
     """
     Locate a keyword in a string and extract the substring from
@@ -7746,7 +8083,7 @@ def kxtrct(keywd, terms, nterms, instring, termlen=_default_len_out, stringlen=_
     stringlen = ctypes.c_int(stringlen)
     substrlen = ctypes.c_int(substrlen)
     found = ctypes.c_int()
-    libspice.kxtrct_c(_naif_context, keywd, termlen, terms, nterms,
+    libspice.kxtrct_c(getNaifContext(), keywd, termlen, terms, nterms,
                       stringlen, substrlen, instring, ctypes.byref(found),
                       substr)
     return stypes.toPythonString(instring), stypes.toPythonString(
@@ -7758,6 +8095,7 @@ def kxtrct(keywd, terms, nterms, instring, termlen=_default_len_out, stringlen=_
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lastnb(string):
     """
     Return the zero based index of the last non-blank character in
@@ -7770,10 +8108,11 @@ def lastnb(string):
     :return: :rtype:
     """
     string = stypes.stringToCharP(string)
-    return libspice.lastnb_c(_naif_context, string)
+    return libspice.lastnb_c(getNaifContext(), string)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def latcyl(radius, lon, lat):
     """
     Convert from latitudinal coordinates to cylindrical coordinates.
@@ -7793,12 +8132,13 @@ def latcyl(radius, lon, lat):
     r = ctypes.c_double()
     lonc = ctypes.c_double()
     z = ctypes.c_double()
-    libspice.latcyl_c(_naif_context, radius, lon, lat, ctypes.byref(r), ctypes.byref(lonc),
+    libspice.latcyl_c(getNaifContext(), radius, lon, lat, ctypes.byref(r), ctypes.byref(lonc),
                       ctypes.byref(z))
     return r.value, lonc.value, z.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def latrec(radius, longitude, latitude):
     """
     Convert from latitudinal coordinates to rectangular coordinates.
@@ -7818,11 +8158,12 @@ def latrec(radius, longitude, latitude):
     longitude = ctypes.c_double(longitude)
     latitude = ctypes.c_double(latitude)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.latrec_c(_naif_context, radius, longitude, latitude, rectan)
+    libspice.latrec_c(getNaifContext(), radius, longitude, latitude, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def latsph(radius, lon, lat):
     """
     Convert from latitudinal coordinates to spherical coordinates.
@@ -7841,12 +8182,13 @@ def latsph(radius, lon, lat):
     rho = ctypes.c_double()
     colat = ctypes.c_double()
     lons = ctypes.c_double()
-    libspice.latsph_c(_naif_context, radius, lon, lat, ctypes.byref(rho), ctypes.byref(colat),
+    libspice.latsph_c(getNaifContext(), radius, lon, lat, ctypes.byref(rho), ctypes.byref(colat),
                       ctypes.byref(lons))
     return rho.value, colat.value, lons.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def latsrf(method, target, et, fixref, lonlat):
     """
     Map array of planetocentric longitude/latitude coordinate pairs 
@@ -7877,11 +8219,12 @@ def latsrf(method, target, et, fixref, lonlat):
     npts   = ctypes.c_int(len(lonlat))
     lonlat = stypes.toDoubleMatrix(lonlat)
     srfpts = stypes.emptyDoubleMatrix(3, npts.value)
-    libspice.latsrf_c(_naif_context, method, target, et, fixref, npts, lonlat, srfpts)
+    libspice.latsrf_c(getNaifContext(), method, target, et, fixref, npts, lonlat, srfpts)
     return stypes.cMatrixToNumpy(srfpts)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lcase(instr, lenout=_default_len_out):
     """
     Convert the characters in a string to lowercase.
@@ -7898,11 +8241,12 @@ def lcase(instr, lenout=_default_len_out):
     instr = stypes.stringToCharP(instr)
     lenout = ctypes.c_int(lenout)
     outstr = stypes.stringToCharP(lenout)
-    libspice.lcase_c(_naif_context, instr, lenout, outstr)
+    libspice.lcase_c(getNaifContext(), instr, lenout, outstr)
     return stypes.toPythonString(outstr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ldpool(filename):
     """
     Load the variables contained in a NAIF ASCII kernel file into the
@@ -7914,10 +8258,11 @@ def ldpool(filename):
     :type filename: str
     """
     filename = stypes.stringToCharP(filename)
-    libspice.ldpool_c(_naif_context, filename)
+    libspice.ldpool_c(getNaifContext(), filename)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def limbpt(method, target, et, fixref, abcorr, corloc, obsrvr, refvec, rolstp, ncuts, schstp, soltol, maxn):
     """
     Find limb points on a target body. The limb is the set of points 
@@ -7976,7 +8321,7 @@ def limbpt(method, target, et, fixref, abcorr, corloc, obsrvr, refvec, rolstp, n
     points = stypes.emptyDoubleMatrix(3, maxn.value)
     epochs = stypes.emptyDoubleVector(maxn)
     tangts = stypes.emptyDoubleMatrix(3, maxn.value)
-    libspice.limbpt_c(_naif_context, method, target, et, fixref,
+    libspice.limbpt_c(getNaifContext(), method, target, et, fixref,
                       abcorr, corloc, obsrvr, refvec,
                       rolstp, ncuts, schstp, soltol,
                       maxn, npts, points, epochs, tangts)
@@ -7987,6 +8332,7 @@ def limbpt(method, target, et, fixref, abcorr, corloc, obsrvr, refvec, rolstp, n
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lgrind(xvals, yvals, x):
     """
     Evaluate a Lagrange interpolating polynomial for a specified
@@ -8011,11 +8357,12 @@ def lgrind(xvals, yvals, x):
     x  = ctypes.c_double(x)
     p  = ctypes.c_double(0)
     dp = ctypes.c_double(0)
-    libspice.lgrind_c(_naif_context, n, xvals, yvals, work, x, p, dp)
+    libspice.lgrind_c(getNaifContext(), n, xvals, yvals, work, x, p, dp)
     return p.value, dp.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lmpool(cvals):
     """
     Load the variables contained in an internal buffer into the
@@ -8029,10 +8376,11 @@ def lmpool(cvals):
     lenvals = ctypes.c_int(len(max(cvals, key=len)) + 1)
     n = ctypes.c_int(len(cvals))
     cvals = stypes.listToCharArrayPtr(cvals, xLen=lenvals, yLen=n)
-    libspice.lmpool_c(_naif_context, cvals, lenvals, n)
+    libspice.lmpool_c(getNaifContext(), cvals, lenvals, n)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lparse(inlist, delim, nmax):
     """
     Parse a list of items delimited by a single character.
@@ -8054,12 +8402,13 @@ def lparse(inlist, delim, nmax):
     nmax = ctypes.c_int(nmax)
     items = stypes.emptyCharArray(lenout, nmax)
     n = ctypes.c_int()
-    libspice.lparse_c(_naif_context, inlist, delim, nmax, lenout, ctypes.byref(n),
+    libspice.lparse_c(getNaifContext(), inlist, delim, nmax, lenout, ctypes.byref(n),
                       ctypes.byref(items))
     return [stypes.toPythonString(x.value) for x in items[0:n.value]]
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lparsm(inlist, delims, nmax, lenout=None):
     """
     Parse a list of items separated by multiple delimiters.
@@ -8086,11 +8435,12 @@ def lparsm(inlist, delims, nmax, lenout=None):
     items = stypes.emptyCharArray(lenout.value, nmax)
     nmax = ctypes.c_int(nmax)
     n = ctypes.c_int()
-    libspice.lparsm_c(_naif_context, inlist, delims, nmax, lenout, ctypes.byref(n), items)
+    libspice.lparsm_c(getNaifContext(), inlist, delims, nmax, lenout, ctypes.byref(n), items)
     return [stypes.toPythonString(x.value) for x in items][0:n.value]
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lparss(inlist, delims, NMAX=20, LENGTH=50):
     """
     Parse a list of items separated by multiple delimiters, placing the
@@ -8112,11 +8462,12 @@ def lparss(inlist, delims, NMAX=20, LENGTH=50):
     inlist = stypes.stringToCharP(inlist)
     delims = stypes.stringToCharP(delims)
     returnSet = stypes.SPICECHAR_CELL(NMAX, LENGTH)
-    libspice.lparss_c(_naif_context, inlist, delims, ctypes.byref(returnSet))
+    libspice.lparss_c(getNaifContext(), inlist, delims, ctypes.byref(returnSet))
     return returnSet
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lspcn(body, et, abcorr):
     """
     Compute L_s, the planetocentric longitude of the sun, as seen
@@ -8136,10 +8487,11 @@ def lspcn(body, et, abcorr):
     body = stypes.stringToCharP(body)
     et = ctypes.c_double(et)
     abcorr = stypes.stringToCharP(abcorr)
-    return libspice.lspcn_c(_naif_context, body, et, abcorr)
+    return libspice.lspcn_c(getNaifContext(), body, et, abcorr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstlec(string, n, lenvals, array):
     """
     Given a character string and an ordered array of character
@@ -8165,10 +8517,11 @@ def lstlec(string, n, lenvals, array):
     array = stypes.listToCharArrayPtr(array, xLen=lenvals, yLen=n)
     n = ctypes.c_int(n)
     lenvals = ctypes.c_int(lenvals)
-    return libspice.lstlec_c(_naif_context, string, n, lenvals, array)
+    return libspice.lstlec_c(getNaifContext(), string, n, lenvals, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstled(x, n, array):
     """
     Given a number x and an array of non-decreasing floats
@@ -8188,10 +8541,11 @@ def lstled(x, n, array):
     array = stypes.toDoubleVector(array)
     x = ctypes.c_double(x)
     n = ctypes.c_int(n)
-    return libspice.lstled_c(_naif_context, x, n, array)
+    return libspice.lstled_c(getNaifContext(), x, n, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstlei(x, n, array):
     """
     Given a number x and an array of non-decreasing ints,
@@ -8211,10 +8565,11 @@ def lstlei(x, n, array):
     array = stypes.toIntVector(array)
     x = ctypes.c_int(x)
     n = ctypes.c_int(n)
-    return libspice.lstlei_c(_naif_context, x, n, array)
+    return libspice.lstlei_c(getNaifContext(), x, n, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstltc(string, n, lenvals, array):
     """
     Given a character string and an ordered array of character
@@ -8240,10 +8595,11 @@ def lstltc(string, n, lenvals, array):
     array = stypes.listToCharArrayPtr(array, xLen=lenvals, yLen=n)
     n = ctypes.c_int(n)
     lenvals = ctypes.c_int(lenvals)
-    return libspice.lstltc_c(_naif_context, string, n, lenvals, array)
+    return libspice.lstltc_c(getNaifContext(), string, n, lenvals, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstltd(x, n, array):
     """
     Given a number x and an array of non-decreasing floats
@@ -8263,10 +8619,11 @@ def lstltd(x, n, array):
     array = stypes.toDoubleVector(array)
     x = ctypes.c_double(x)
     n = ctypes.c_int(n)
-    return libspice.lstltd_c(_naif_context, x, n, array)
+    return libspice.lstltd_c(getNaifContext(), x, n, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lstlti(x, n, array):
     """
     Given a number x and an array of non-decreasing int,
@@ -8286,10 +8643,11 @@ def lstlti(x, n, array):
     array = stypes.toIntVector(array)
     x = ctypes.c_int(x)
     n = ctypes.c_int(n)
-    return libspice.lstlti_c(_naif_context, x, n, array)
+    return libspice.lstlti_c(getNaifContext(), x, n, array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ltime(etobs, obs, direct, targ):
     """
     This routine computes the transmit (or receive) time
@@ -8316,12 +8674,13 @@ def ltime(etobs, obs, direct, targ):
     targ = ctypes.c_int(targ)
     ettarg = ctypes.c_double()
     elapsd = ctypes.c_double()
-    libspice.ltime_c(_naif_context, etobs, obs, direct, targ, ctypes.byref(ettarg),
+    libspice.ltime_c(getNaifContext(), etobs, obs, direct, targ, ctypes.byref(ettarg),
                      ctypes.byref(elapsd))
     return ettarg.value, elapsd.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lx4dec(string, first):
     """
     Scan a string from a specified starting position for the
@@ -8340,11 +8699,12 @@ def lx4dec(string, first):
     first = ctypes.c_int(first)
     last = ctypes.c_int()
     nchar = ctypes.c_int()
-    libspice.lx4dec_c(_naif_context, string, first, ctypes.byref(last), ctypes.byref(nchar))
+    libspice.lx4dec_c(getNaifContext(), string, first, ctypes.byref(last), ctypes.byref(nchar))
     return last.value, nchar.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lx4num(string, first):
     """
     Scan a string from a specified starting position for the
@@ -8363,11 +8723,12 @@ def lx4num(string, first):
     first = ctypes.c_int(first)
     last = ctypes.c_int()
     nchar = ctypes.c_int()
-    libspice.lx4num_c(_naif_context, string, first, ctypes.byref(last), ctypes.byref(nchar))
+    libspice.lx4num_c(getNaifContext(), string, first, ctypes.byref(last), ctypes.byref(nchar))
     return last.value, nchar.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lx4sgn(string, first):
     """
     Scan a string from a specified starting position for the
@@ -8386,11 +8747,12 @@ def lx4sgn(string, first):
     first = ctypes.c_int(first)
     last = ctypes.c_int()
     nchar = ctypes.c_int()
-    libspice.lx4sgn_c(_naif_context, string, first, ctypes.byref(last), ctypes.byref(nchar))
+    libspice.lx4sgn_c(getNaifContext(), string, first, ctypes.byref(last), ctypes.byref(nchar))
     return last.value, nchar.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lx4uns(string, first):
     """
     Scan a string from a specified starting position for the
@@ -8409,11 +8771,12 @@ def lx4uns(string, first):
     first = ctypes.c_int(first)
     last = ctypes.c_int()
     nchar = ctypes.c_int()
-    libspice.lx4uns_c(_naif_context, string, first, ctypes.byref(last), ctypes.byref(nchar))
+    libspice.lx4uns_c(getNaifContext(), string, first, ctypes.byref(last), ctypes.byref(nchar))
     return last.value, nchar.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def lxqstr(string, qchar, first):
     """
     Lex (scan) a quoted string.
@@ -8434,7 +8797,7 @@ def lxqstr(string, qchar, first):
     first = ctypes.c_int(first)
     last = ctypes.c_int()
     nchar = ctypes.c_int()
-    libspice.lxqstr_c(_naif_context, string, qchar, first, ctypes.byref(last),
+    libspice.lxqstr_c(getNaifContext(), string, qchar, first, ctypes.byref(last),
                       ctypes.byref(nchar))
     return last.value, nchar.value
 
@@ -8444,6 +8807,7 @@ def lxqstr(string, qchar, first):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def m2eul(r, axis3, axis2, axis1):
     """
     Factor a rotation matrix as a product of three rotations
@@ -8469,12 +8833,13 @@ def m2eul(r, axis3, axis2, axis1):
     angle3 = ctypes.c_double()
     angle2 = ctypes.c_double()
     angle1 = ctypes.c_double()
-    libspice.m2eul_c(_naif_context, r, axis3, axis2, axis1, ctypes.byref(angle3),
+    libspice.m2eul_c(getNaifContext(), r, axis3, axis2, axis1, ctypes.byref(angle3),
                      ctypes.byref(angle2), ctypes.byref(angle1))
     return angle3.value, angle2.value, angle1.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def m2q(r):
     """
     Find a unit quaternion corresponding to a specified rotation matrix.
@@ -8488,11 +8853,12 @@ def m2q(r):
     """
     r = stypes.toDoubleMatrix(r)
     q = stypes.emptyDoubleVector(4)
-    libspice.m2q_c(_naif_context, r, q)
+    libspice.m2q_c(getNaifContext(), r, q)
     return stypes.cVectorToPython(q)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def matchi(string, templ, wstr, wchr):
     """
     Determine whether a string is matched by a template containing wild cards.
@@ -8515,10 +8881,11 @@ def matchi(string, templ, wstr, wchr):
     templ = stypes.stringToCharP(templ)
     wstr = ctypes.c_char(wstr.encode(encoding='UTF-8'))
     wchr = ctypes.c_char(wchr.encode(encoding='UTF-8'))
-    return bool(libspice.matchi_c(_naif_context, string, templ, wstr, wchr))
+    return bool(libspice.matchi_c(getNaifContext(), string, templ, wstr, wchr))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def matchw(string, templ, wstr, wchr):
     # ctypes.c_char(wstr.encode(encoding='UTF-8')
     """
@@ -8541,7 +8908,7 @@ def matchw(string, templ, wstr, wchr):
     templ = stypes.stringToCharP(templ)
     wstr = ctypes.c_char(wstr.encode(encoding='UTF-8'))
     wchr = ctypes.c_char(wchr.encode(encoding='UTF-8'))
-    return bool(libspice.matchw_c(_naif_context, string, templ, wstr, wchr))
+    return bool(libspice.matchw_c(getNaifContext(), string, templ, wstr, wchr))
 
 
 # skiping for now maxd_c,
@@ -8553,6 +8920,7 @@ def matchw(string, templ, wstr, wchr):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mequ(m1):
     """
     Set one double precision 3x3 matrix equal to another.
@@ -8566,11 +8934,12 @@ def mequ(m1):
     """
     m1 = stypes.toDoubleMatrix(m1)
     mout = stypes.emptyDoubleMatrix()
-    libspice.mequ_c(_naif_context, m1, mout)
+    libspice.mequ_c(getNaifContext(), m1, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mequg(m1, nr, nc):
     """
     Set one double precision matrix of arbitrary size equal to another.
@@ -8590,7 +8959,7 @@ def mequg(m1, nr, nc):
     mout = stypes.emptyDoubleMatrix(x=nc, y=nr)
     nc = ctypes.c_int(nc)
     nr = ctypes.c_int(nr)
-    libspice.mequg_c(_naif_context, m1, nc, nr, mout)
+    libspice.mequg_c(getNaifContext(), m1, nc, nr, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
@@ -8603,6 +8972,7 @@ def mequg(m1, nr, nc):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mtxm(m1, m2):
     """
     Multiply the transpose of a 3x3 matrix and a 3x3 matrix.
@@ -8619,11 +8989,12 @@ def mtxm(m1, m2):
     m1 = stypes.toDoubleMatrix(m1)
     m2 = stypes.toDoubleMatrix(m2)
     mout = stypes.emptyDoubleMatrix()
-    libspice.mtxm_c(_naif_context, m1, m2, mout)
+    libspice.mtxm_c(getNaifContext(), m1, m2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mtxmg(m1, m2, ncol1, nr1r2, ncol2):
     """
     Multiply the transpose of a matrix with
@@ -8650,11 +9021,12 @@ def mtxmg(m1, m2, ncol1, nr1r2, ncol2):
     ncol1 = ctypes.c_int(ncol1)
     nr1r2 = ctypes.c_int(nr1r2)
     ncol2 = ctypes.c_int(ncol2)
-    libspice.mtxmg_c(_naif_context, m1, m2, ncol1, nr1r2, ncol2, mout)
+    libspice.mtxmg_c(getNaifContext(), m1, m2, ncol1, nr1r2, ncol2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mtxv(m1, vin):
     """
     Multiplies the transpose of a 3x3 matrix
@@ -8672,11 +9044,12 @@ def mtxv(m1, vin):
     m1 = stypes.toDoubleMatrix(m1)
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(3)
-    libspice.mtxv_c(_naif_context, m1, vin, vout)
+    libspice.mtxv_c(getNaifContext(), m1, vin, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mtxvg(m1, v2, ncol1, nr1r2):
     """
     Multiply the transpose of a matrix and
@@ -8700,11 +9073,12 @@ def mtxvg(m1, v2, ncol1, nr1r2):
     ncol1 = ctypes.c_int(ncol1)
     nr1r2 = ctypes.c_int(nr1r2)
     vout = stypes.emptyDoubleVector(ncol1.value)
-    libspice.mtxvg_c(_naif_context, m1, v2, ncol1, nr1r2, vout)
+    libspice.mtxvg_c(getNaifContext(), m1, v2, ncol1, nr1r2, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxm(m1, m2):
     """
     Multiply two 3x3 matrices.
@@ -8721,11 +9095,12 @@ def mxm(m1, m2):
     m1 = stypes.toDoubleMatrix(m1)
     m2 = stypes.toDoubleMatrix(m2)
     mout = stypes.emptyDoubleMatrix()
-    libspice.mxm_c(_naif_context, m1, m2, mout)
+    libspice.mxm_c(getNaifContext(), m1, m2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxmg(m1, m2, nrow1, ncol1, ncol2):
     """
     Multiply two double precision matrices of arbitrary size.
@@ -8751,11 +9126,12 @@ def mxmg(m1, m2, nrow1, ncol1, ncol2):
     nrow1 = ctypes.c_int(nrow1)
     ncol1 = ctypes.c_int(ncol1)
     ncol2 = ctypes.c_int(ncol2)
-    libspice.mxmg_c(_naif_context, m1, m2, nrow1, ncol1, ncol2, mout)
+    libspice.mxmg_c(getNaifContext(), m1, m2, nrow1, ncol1, ncol2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxmt(m1, m2):
     """
     Multiply a 3x3 matrix and the transpose of another 3x3 matrix.
@@ -8772,11 +9148,12 @@ def mxmt(m1, m2):
     m1 = stypes.toDoubleMatrix(m1)
     m2 = stypes.toDoubleMatrix(m2)
     mout = stypes.emptyDoubleMatrix()
-    libspice.mxmt_c(_naif_context, m1, m2, mout)
+    libspice.mxmt_c(getNaifContext(), m1, m2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxmtg(m1, m2, nrow1, nc1c2, nrow2):
     """
     Multiply a matrix and the transpose of a matrix, both of arbitrary size.
@@ -8802,11 +9179,12 @@ def mxmtg(m1, m2, nrow1, nc1c2, nrow2):
     nrow1 = ctypes.c_int(nrow1)
     nc1c2 = ctypes.c_int(nc1c2)
     nrow2 = ctypes.c_int(nrow2)
-    libspice.mxmtg_c(_naif_context, m1, m2, nrow1, nc1c2, nrow2, mout)
+    libspice.mxmtg_c(getNaifContext(), m1, m2, nrow1, nc1c2, nrow2, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxv(m1, vin):
     """
     Multiply a 3x3 double precision matrix with a
@@ -8824,11 +9202,12 @@ def mxv(m1, vin):
     m1 = stypes.toDoubleMatrix(m1)
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(3)
-    libspice.mxv_c(_naif_context, m1, vin, vout)
+    libspice.mxv_c(getNaifContext(), m1, vin, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def mxvg(m1, v2, nrow1, nc1r2):
     """
     Multiply a matrix and a vector of arbitrary size.
@@ -8851,7 +9230,7 @@ def mxvg(m1, v2, nrow1, nc1r2):
     nrow1 = ctypes.c_int(nrow1)
     nc1r2 = ctypes.c_int(nc1r2)
     vout = stypes.emptyDoubleVector(nrow1.value)
-    libspice.mxvg_c(_naif_context, m1, v2, nrow1, nc1r2, vout)
+    libspice.mxvg_c(getNaifContext(), m1, v2, nrow1, nc1r2, vout)
     return stypes.cVectorToPython(vout)
 
 
@@ -8860,6 +9239,7 @@ def mxvg(m1, v2, nrow1, nc1r2):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def namfrm(frname):
     """
     Look up the frame ID code associated with a string.
@@ -8873,11 +9253,12 @@ def namfrm(frname):
     """
     frname = stypes.stringToCharP(frname)
     frcode = ctypes.c_int()
-    libspice.namfrm_c(_naif_context, frname, ctypes.byref(frcode))
+    libspice.namfrm_c(getNaifContext(), frname, ctypes.byref(frcode))
     return frcode.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ncpos(string, chars, start):
     """
     Find the first occurrence in a string of a character NOT belonging
@@ -8898,10 +9279,11 @@ def ncpos(string, chars, start):
     string = stypes.stringToCharP(string)
     chars = stypes.stringToCharP(chars)
     start = ctypes.c_int(start)
-    return libspice.ncpos_c(_naif_context, string, chars, start)
+    return libspice.ncpos_c(getNaifContext(), string, chars, start)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ncposr(string, chars, start):
     """
     Find the first occurrence in a string of a character NOT belonging to a
@@ -8922,10 +9304,11 @@ def ncposr(string, chars, start):
     string = stypes.stringToCharP(string)
     chars = stypes.stringToCharP(chars)
     start = ctypes.c_int(start)
-    return libspice.ncposr_c(_naif_context, string, chars, start)
+    return libspice.ncposr_c(getNaifContext(), string, chars, start)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def nearpt(positn, a, b, c):
     """
     locates the point on the surface of an ellipsoid that is nearest to a
@@ -8953,11 +9336,12 @@ def nearpt(positn, a, b, c):
     c = ctypes.c_double(c)
     npoint = stypes.emptyDoubleVector(3)
     alt = ctypes.c_double()
-    libspice.nearpt_c(_naif_context, positn, a, b, c, npoint, ctypes.byref(alt))
+    libspice.nearpt_c(getNaifContext(), positn, a, b, c, npoint, ctypes.byref(alt))
     return stypes.cVectorToPython(npoint), alt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def npedln(a, b, c, linept, linedr):
     """
     Find nearest point on a triaxial ellipsoid to a specified
@@ -8985,11 +9369,12 @@ def npedln(a, b, c, linept, linedr):
     linedr = stypes.toDoubleVector(linedr)
     pnear = stypes.emptyDoubleVector(3)
     dist = ctypes.c_double()
-    libspice.npedln_c(_naif_context, a, b, c, linept, linedr, pnear, ctypes.byref(dist))
+    libspice.npedln_c(getNaifContext(), a, b, c, linept, linedr, pnear, ctypes.byref(dist))
     return stypes.cVectorToPython(pnear), dist.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def npelpt(point, ellips):
     """
     Find the nearest point on an ellipse to a specified point, both
@@ -9008,11 +9393,12 @@ def npelpt(point, ellips):
     point = stypes.toDoubleVector(point)
     pnear = stypes.emptyDoubleVector(3)
     dist = ctypes.c_double()
-    libspice.npelpt_c(_naif_context, point, ctypes.byref(ellips), pnear, ctypes.byref(dist))
+    libspice.npelpt_c(getNaifContext(), point, ctypes.byref(ellips), pnear, ctypes.byref(dist))
     return stypes.cVectorToPython(pnear), dist.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def nplnpt(linpt, lindir, point):
     """
     Find the nearest point on a line to a specified point,
@@ -9036,11 +9422,12 @@ def nplnpt(linpt, lindir, point):
     point = stypes.toDoubleVector(point)
     pnear = stypes.emptyDoubleVector(3)
     dist = ctypes.c_double()
-    libspice.nplnpt_c(_naif_context, linpt, lindir, point, pnear, ctypes.byref(dist))
+    libspice.nplnpt_c(getNaifContext(), linpt, lindir, point, pnear, ctypes.byref(dist))
     return stypes.cVectorToPython(pnear), dist.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def nvc2pl(normal, constant):
     """
     Make a plane from a normal vector and a constant.
@@ -9057,11 +9444,12 @@ def nvc2pl(normal, constant):
     plane = stypes.Plane()
     normal = stypes.toDoubleVector(normal)
     constant = ctypes.c_double(constant)
-    libspice.nvc2pl_c(_naif_context, normal, constant, ctypes.byref(plane))
+    libspice.nvc2pl_c(getNaifContext(), normal, constant, ctypes.byref(plane))
     return plane
 
 
 @spiceErrorCheck
+@assertNaifContext
 def nvp2pl(normal, point):
     """
     Make a plane from a normal vector and a point.
@@ -9078,7 +9466,7 @@ def nvp2pl(normal, point):
     normal = stypes.toDoubleVector(normal)
     point = stypes.toDoubleVector(point)
     plane = stypes.Plane()
-    libspice.nvp2pl_c(_naif_context, normal, point, ctypes.byref(plane))
+    libspice.nvp2pl_c(getNaifContext(), normal, point, ctypes.byref(plane))
     return plane
 
 
@@ -9086,6 +9474,7 @@ def nvp2pl(normal, point):
 # O
 
 @spiceErrorCheck
+@assertNaifContext
 def occult(target1, shape1, frame1, target2, shape2, frame2, abcorr, observer,
            et):
     """
@@ -9126,12 +9515,13 @@ def occult(target1, shape1, frame1, target2, shape2, frame2, abcorr, observer,
     observer = stypes.stringToCharP(observer)
     et = ctypes.c_double(et)
     occult_code = ctypes.c_int()
-    libspice.occult_c(_naif_context, target1, shape1, frame1, target2, shape2, frame2, abcorr,
+    libspice.occult_c(getNaifContext(), target1, shape1, frame1, target2, shape2, frame2, abcorr,
                       observer, et, ctypes.byref(occult_code))
     return occult_code.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ordc(item, inset):
     """
     The function returns the ordinal position of any given item in a
@@ -9151,10 +9541,11 @@ def ordc(item, inset):
     assert inset.is_char()
     assert isinstance(item, str)
     item = stypes.stringToCharP(item)
-    return libspice.ordc_c(_naif_context, item, ctypes.byref(inset))
+    return libspice.ordc_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ordd(item, inset):
     """
     The function returns the ordinal position of any given item in a
@@ -9173,10 +9564,11 @@ def ordd(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.is_double()
     item = ctypes.c_double(item)
-    return libspice.ordd_c(_naif_context, item, ctypes.byref(inset))
+    return libspice.ordd_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ordi(item, inset):
     """
     The function returns the ordinal position of any given item in an
@@ -9196,10 +9588,11 @@ def ordi(item, inset):
     assert inset.is_int()
     assert isinstance(item, int)
     item = ctypes.c_int(item)
-    return libspice.ordi_c(_naif_context, item, ctypes.byref(inset))
+    return libspice.ordi_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def orderc(array, ndim=None):
     """
     Determine the order of elements in an array of character strings.
@@ -9220,11 +9613,12 @@ def orderc(array, ndim=None):
     lenvals = ctypes.c_int(len(max(array, key=len)) + 1)
     iorder = stypes.emptyIntVector(ndim)
     array = stypes.listToCharArray(array, lenvals, ndim)
-    libspice.orderc_c(_naif_context, lenvals, array, ndim, iorder)
+    libspice.orderc_c(getNaifContext(), lenvals, array, ndim, iorder)
     return stypes.cVectorToPython(iorder)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def orderd(array, ndim=None):
     """
     Determine the order of elements in a double precision array.
@@ -9244,11 +9638,12 @@ def orderd(array, ndim=None):
         ndim = ctypes.c_int(ndim)
     array = stypes.toDoubleVector(array)
     iorder = stypes.emptyIntVector(ndim)
-    libspice.orderd_c(_naif_context, array, ndim, iorder)
+    libspice.orderd_c(getNaifContext(), array, ndim, iorder)
     return stypes.cVectorToPython(iorder)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def orderi(array, ndim=None):
     """
     Determine the order of elements in an integer array.
@@ -9268,11 +9663,12 @@ def orderi(array, ndim=None):
         ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
     iorder = stypes.emptyIntVector(ndim)
-    libspice.orderi_c(_naif_context, array, ndim, iorder)
+    libspice.orderi_c(getNaifContext(), array, ndim, iorder)
     return stypes.cVectorToPython(iorder)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def oscelt(state, et, mu):
     """
     Determine the set of osculating conic orbital elements that
@@ -9294,10 +9690,11 @@ def oscelt(state, et, mu):
     et = ctypes.c_double(et)
     mu = ctypes.c_double(mu)
     elts = stypes.emptyDoubleVector(8)
-    libspice.oscelt_c(_naif_context, state, et, mu, elts)
+    libspice.oscelt_c(getNaifContext(), state, et, mu, elts)
     return stypes.cVectorToPython(elts)
 
 
+@assertNaifContext
 def oscltx(state, et, mu):
     """
     Determine the set of osculating conic orbital elements that 
@@ -9319,13 +9716,14 @@ def oscltx(state, et, mu):
     et = ctypes.c_double(et)
     mu = ctypes.c_double(mu)
     elts = stypes.emptyDoubleVector(20)
-    libspice.oscltx_c(_naif_context, state, et, mu, elts)
+    libspice.oscltx_c(getNaifContext(), state, et, mu, elts)
     return stypes.cVectorToPython(elts)[0:11]
 
 
 ################################################################################
 # P
 @spiceErrorCheck
+@assertNaifContext
 def pckcls(handle):
     """
     Close an open PCK file. 
@@ -9336,10 +9734,11 @@ def pckcls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.pckcls_c(_naif_context, handle)
+    libspice.pckcls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pckcov(pck, idcode, cover):
     """
     Find the coverage window for a specified reference frame in a
@@ -9358,10 +9757,11 @@ def pckcov(pck, idcode, cover):
     idcode = ctypes.c_int(idcode)
     assert isinstance(cover, stypes.SpiceCell)
     assert cover.dtype == 1
-    libspice.pckcov_c(_naif_context, pck, idcode, ctypes.byref(cover))
+    libspice.pckcov_c(getNaifContext(), pck, idcode, ctypes.byref(cover))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pckfrm(pck, ids):
     """
     Find the set of reference frame class ID codes of all frames
@@ -9377,10 +9777,11 @@ def pckfrm(pck, ids):
     pck = stypes.stringToCharP(pck)
     assert isinstance(ids, stypes.SpiceCell)
     assert ids.dtype == 2
-    libspice.pckfrm_c(_naif_context, pck, ctypes.byref(ids))
+    libspice.pckfrm_c(getNaifContext(), pck, ctypes.byref(ids))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pcklof(filename):
     """
     Load a binary PCK file for use by the readers.  Return the
@@ -9396,11 +9797,12 @@ def pcklof(filename):
     """
     filename = stypes.stringToCharP(filename)
     handle = ctypes.c_int()
-    libspice.pcklof_c(_naif_context, filename, ctypes.byref(handle))
+    libspice.pcklof_c(getNaifContext(), filename, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pckopn(name, ifname, ncomch):
     """
     Create a new PCK file, returning the handle of the opened file. 
@@ -9420,11 +9822,12 @@ def pckopn(name, ifname, ncomch):
     ifname = stypes.stringToCharP(ifname)
     ncomch = ctypes.c_int(ncomch)
     handle = ctypes.c_int()
-    libspice.pckopn_c(_naif_context, name, ifname, ncomch, ctypes.byref(handle))
+    libspice.pckopn_c(getNaifContext(), name, ifname, ncomch, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pckuof(handle):
     """
     Unload a binary PCK file so that it will no longer be searched by
@@ -9436,10 +9839,11 @@ def pckuof(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.pckuof_c(_naif_context, handle)
+    libspice.pckuof_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pckw02(handle, classid, frname, first, last, segid, intlen, n, polydg, cdata, btime):
     """
     Write a type 2 segment to a PCK binary file given the file handle,
@@ -9482,10 +9886,11 @@ def pckw02(handle, classid, frname, first, last, segid, intlen, n, polydg, cdata
     polydg = ctypes.c_int(polydg)
     cdata = stypes.toDoubleVector(cdata)
     btime = ctypes.c_double(btime)
-    libspice.pckw02_c(_naif_context, handle, classid, frame, first, last, segid, intlen, n, polydg, cdata, btime)
+    libspice.pckw02_c(getNaifContext(), handle, classid, frame, first, last, segid, intlen, n, polydg, cdata, btime)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pcpool(name, cvals):
     """
     This entry point provides toolkit programmers a method for
@@ -9503,10 +9908,11 @@ def pcpool(name, cvals):
     lenvals = ctypes.c_int(len(max(cvals, key=len)) + 1)
     n = ctypes.c_int(len(cvals))
     cvals = stypes.listToCharArray(cvals, lenvals, n)
-    libspice.pcpool_c(_naif_context, name, n, lenvals, cvals)
+    libspice.pcpool_c(getNaifContext(), name, n, lenvals, cvals)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pdpool(name, dvals):
     """
     This entry point provides toolkit programmers a method for
@@ -9523,10 +9929,11 @@ def pdpool(name, dvals):
     name = stypes.stringToCharP(name)
     n = ctypes.c_int(len(dvals))
     dvals = stypes.toDoubleVector(dvals)
-    libspice.pdpool_c(_naif_context, name, n, dvals)
+    libspice.pdpool_c(getNaifContext(), name, n, dvals)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pgrrec(body, lon, lat, alt, re, f):
     """
     Convert planetographic coordinates to rectangular coordinates.
@@ -9555,11 +9962,12 @@ def pgrrec(body, lon, lat, alt, re, f):
     re = ctypes.c_double(re)
     f = ctypes.c_double(f)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.pgrrec_c(_naif_context, body, lon, lat, alt, re, f, rectan)
+    libspice.pgrrec_c(getNaifContext(), body, lon, lat, alt, re, f, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def phaseq(et, target, illmn, obsrvr, abcorr):
     """
     Compute the apparent phase angle for a target, observer,
@@ -9585,10 +9993,11 @@ def phaseq(et, target, illmn, obsrvr, abcorr):
     illmn = stypes.stringToCharP(illmn)
     obsrvr = stypes.stringToCharP(obsrvr)
     abcorr = stypes.stringToCharP(abcorr)
-    return libspice.phaseq_c(_naif_context, et, target, illmn, obsrvr, abcorr)
+    return libspice.phaseq_c(getNaifContext(), et, target, illmn, obsrvr, abcorr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pi():
     """
     Return the value of pi (the ratio of the circumference of
@@ -9599,10 +10008,11 @@ def pi():
     :return: value of pi.
     :rtype: float
     """
-    return libspice.pi_c(_naif_context)
+    return libspice.pi_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pipool(name, ivals):
     """
     This entry point provides toolkit programmers a method for
@@ -9618,10 +10028,11 @@ def pipool(name, ivals):
     name = stypes.stringToCharP(name)
     n = ctypes.c_int(len(ivals))
     ivals = stypes.toIntVector(ivals)
-    libspice.pipool_c(_naif_context, name, n, ivals)
+    libspice.pipool_c(getNaifContext(), name, n, ivals)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pjelpl(elin, plane):
     """
     Project an ellipse onto a plane, orthogonally.
@@ -9638,12 +10049,13 @@ def pjelpl(elin, plane):
     assert (isinstance(elin, stypes.Ellipse))
     assert (isinstance(plane, stypes.Plane))
     elout = stypes.Ellipse()
-    libspice.pjelpl_c(_naif_context, ctypes.byref(elin), ctypes.byref(plane),
+    libspice.pjelpl_c(getNaifContext(), ctypes.byref(elin), ctypes.byref(plane),
                       ctypes.byref(elout))
     return elout
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pl2nvc(plane):
     """
     Return a unit normal vector and constant that define a specified plane.
@@ -9660,11 +10072,12 @@ def pl2nvc(plane):
     assert (isinstance(plane, stypes.Plane))
     normal = stypes.emptyDoubleVector(3)
     constant = ctypes.c_double()
-    libspice.pl2nvc_c(_naif_context, ctypes.byref(plane), normal, ctypes.byref(constant))
+    libspice.pl2nvc_c(getNaifContext(), ctypes.byref(plane), normal, ctypes.byref(constant))
     return stypes.cVectorToPython(normal), constant.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pl2nvp(plane):
     """
     Return a unit normal vector and point that define a specified plane.
@@ -9680,11 +10093,12 @@ def pl2nvp(plane):
     assert (isinstance(plane, stypes.Plane))
     normal = stypes.emptyDoubleVector(3)
     point = stypes.emptyDoubleVector(3)
-    libspice.pl2nvp_c(_naif_context, ctypes.byref(plane), normal, point)
+    libspice.pl2nvp_c(getNaifContext(), ctypes.byref(plane), normal, point)
     return stypes.cVectorToPython(normal), stypes.cVectorToPython(point)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pl2psv(plane):
     """
     Return a point and two orthogonal spanning vectors that generate
@@ -9703,12 +10117,13 @@ def pl2psv(plane):
     point = stypes.emptyDoubleVector(3)
     span1 = stypes.emptyDoubleVector(3)
     span2 = stypes.emptyDoubleVector(3)
-    libspice.pl2psv_c(_naif_context, ctypes.byref(plane), point, span1, span2)
+    libspice.pl2psv_c(getNaifContext(), ctypes.byref(plane), point, span1, span2)
     return stypes.cVectorToPython(point), stypes.cVectorToPython(
             span1), stypes.cVectorToPython(span2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pltar(vrtces, plates):
     """
     Compute the total area of a collection of triangular plates.
@@ -9726,10 +10141,11 @@ def pltar(vrtces, plates):
     vrtces = stypes.toDoubleMatrix(vrtces)
     np = ctypes.c_int(len(plates))
     plates = stypes.toIntMatrix(plates)
-    return libspice.pltar_c(_naif_context, nv, vrtces, np, plates)
+    return libspice.pltar_c(getNaifContext(), nv, vrtces, np, plates)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pltexp(iverts, delta):
     """
     Expand a triangular plate by a specified amount. The expanded 
@@ -9748,11 +10164,12 @@ def pltexp(iverts, delta):
     iverts = stypes.toDoubleMatrix(iverts)
     delta = ctypes.c_double(delta)
     overts = stypes.emptyDoubleMatrix()
-    libspice.pltexp_c(_naif_context, iverts, delta, overts)
+    libspice.pltexp_c(getNaifContext(), iverts, delta, overts)
     return stypes.cMatrixToNumpy(overts)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pltnp(point, v1, v2, v3):
     """
     Find the nearest point on a triangular plate to a given point. 
@@ -9776,11 +10193,12 @@ def pltnp(point, v1, v2, v3):
     v3 = stypes.toDoubleVector(v3)
     pnear = stypes.emptyDoubleVector(3)
     dist = ctypes.c_double()
-    libspice.pltnp_c(_naif_context, point, v1, v2, v3, pnear, ctypes.byref(dist))
+    libspice.pltnp_c(getNaifContext(), point, v1, v2, v3, pnear, ctypes.byref(dist))
     return stypes.cVectorToPython(pnear), dist.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pltnrm(v1, v2, v3):
     """
     Compute an outward normal vector of a triangular plate. 
@@ -9801,11 +10219,12 @@ def pltnrm(v1, v2, v3):
     v2 = stypes.toDoubleVector(v2)
     v3 = stypes.toDoubleVector(v3)
     normal = stypes.emptyDoubleVector(3)
-    libspice.pltnrm_c(_naif_context, v1, v2, v3, normal)
+    libspice.pltnrm_c(getNaifContext(), v1, v2, v3, normal)
     return stypes.cVectorToPython(normal)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pltvol(vrtces, plates):
     """
     Compute the volume of a three-dimensional region bounded by a 
@@ -9824,10 +10243,11 @@ def pltvol(vrtces, plates):
     vrtces = stypes.toDoubleMatrix(vrtces)
     np = ctypes.c_int(len(plates))
     plates = stypes.toIntMatrix(plates)
-    return libspice.pltvol_c(_naif_context, nv, vrtces, np, plates)
+    return libspice.pltvol_c(getNaifContext(), nv, vrtces, np, plates)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def polyds(coeffs, deg, nderiv, t):
     """
     Compute the value of a polynomial and it's first
@@ -9851,11 +10271,12 @@ def polyds(coeffs, deg, nderiv, t):
     p = stypes.emptyDoubleVector(nderiv + 1)
     nderiv = ctypes.c_int(nderiv)
     t = ctypes.c_double(t)
-    libspice.polyds_c(_naif_context, ctypes.byref(coeffs), deg, nderiv, t, p)
+    libspice.polyds_c(getNaifContext(), ctypes.byref(coeffs), deg, nderiv, t, p)
     return stypes.cVectorToPython(p)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pos(string, substr, start):
     """
     Find the first occurrence in a string of a substring, starting at
@@ -9877,10 +10298,11 @@ def pos(string, substr, start):
     string = stypes.stringToCharP(string)
     substr = stypes.stringToCharP(substr)
     start = ctypes.c_int(start)
-    return libspice.pos_c(_naif_context, string, substr, start)
+    return libspice.pos_c(getNaifContext(), string, substr, start)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def posr(string, substr, start):
     """
     Find the first occurrence in a string of a substring, starting at
@@ -9902,7 +10324,7 @@ def posr(string, substr, start):
     string = stypes.stringToCharP(string)
     substr = stypes.stringToCharP(substr)
     start = ctypes.c_int(start)
-    return libspice.posr_c(_naif_context, string, substr, start)
+    return libspice.posr_c(getNaifContext(), string, substr, start)
 
 
 # prompt,
@@ -9910,6 +10332,7 @@ def posr(string, substr, start):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def prop2b(gm, pvinit, dt):
     """
     Given a central mass and the state of massless body at time t_0,
@@ -9931,11 +10354,12 @@ def prop2b(gm, pvinit, dt):
     pvinit = stypes.toDoubleVector(pvinit)
     dt = ctypes.c_double(dt)
     pvprop = stypes.emptyDoubleVector(6)
-    libspice.prop2b_c(_naif_context, gm, pvinit, dt, pvprop)
+    libspice.prop2b_c(getNaifContext(), gm, pvinit, dt, pvprop)
     return stypes.cVectorToPython(pvprop)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def prsdp(string):
     """
     Parse a string as a double precision number, encapsulating error handling.
@@ -9949,11 +10373,12 @@ def prsdp(string):
     """
     string = stypes.stringToCharP(string)
     dpval = ctypes.c_double()
-    libspice.prsdp_c(_naif_context, string, ctypes.byref(dpval))
+    libspice.prsdp_c(getNaifContext(), string, ctypes.byref(dpval))
     return dpval.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def prsint(string):
     """
     Parse a string as an integer, encapsulating error handling.
@@ -9967,11 +10392,12 @@ def prsint(string):
     """
     string = stypes.stringToCharP(string)
     intval = ctypes.c_int()
-    libspice.prsint_c(_naif_context, string, ctypes.byref(intval))
+    libspice.prsint_c(getNaifContext(), string, ctypes.byref(intval))
     return intval.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def psv2pl(point, span1, span2):
     """
     Make a CSPICE plane from a point and two spanning vectors.
@@ -9991,7 +10417,7 @@ def psv2pl(point, span1, span2):
     span1 = stypes.toDoubleVector(span1)
     span2 = stypes.toDoubleVector(span2)
     plane = stypes.Plane()
-    libspice.psv2pl_c(_naif_context, point, span1, span2, ctypes.byref(plane))
+    libspice.psv2pl_c(getNaifContext(), point, span1, span2, ctypes.byref(plane))
     return plane
 
 
@@ -9999,6 +10425,7 @@ def psv2pl(point, span1, span2):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pxform(fromstr, tostr, et):
     """
     Return the matrix that transforms position vectors from one
@@ -10019,11 +10446,12 @@ def pxform(fromstr, tostr, et):
     tostr = stypes.stringToCharP(tostr)
     fromstr = stypes.stringToCharP(fromstr)
     rotatematrix = stypes.emptyDoubleMatrix()
-    libspice.pxform_c(_naif_context, fromstr, tostr, et, rotatematrix)
+    libspice.pxform_c(getNaifContext(), fromstr, tostr, et, rotatematrix)
     return stypes.cMatrixToNumpy(rotatematrix)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def pxfrm2(frame_from, frame_to, etfrom, etto):
     """
     Return the 3x3 matrix that transforms position vectors from one
@@ -10048,7 +10476,7 @@ def pxfrm2(frame_from, frame_to, etfrom, etto):
     etfrom = ctypes.c_double(etfrom)
     etto = ctypes.c_double(etto)
     outmatrix = stypes.emptyDoubleMatrix()
-    libspice.pxfrm2_c(_naif_context, frame_from, frame_to, etfrom, etto, outmatrix)
+    libspice.pxfrm2_c(getNaifContext(), frame_from, frame_to, etfrom, etto, outmatrix)
     return stypes.cMatrixToNumpy(outmatrix)
 
 
@@ -10057,6 +10485,7 @@ def pxfrm2(frame_from, frame_to, etfrom, etto):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def q2m(q):
     """
     Find the rotation matrix corresponding to a specified unit quaternion.
@@ -10070,11 +10499,12 @@ def q2m(q):
     """
     q = stypes.toDoubleVector(q)
     mout = stypes.emptyDoubleMatrix()
-    libspice.q2m_c(_naif_context, q, mout)
+    libspice.q2m_c(getNaifContext(), q, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 # @spiceErrorCheck
+@assertNaifContext
 def qcktrc(tracelen=_default_len_out):
     """
     Return a string containing a traceback.
@@ -10088,11 +10518,12 @@ def qcktrc(tracelen=_default_len_out):
     """
     tracestr = stypes.stringToCharP(tracelen)
     tracelen = ctypes.c_int(tracelen)
-    libspice.qcktrc_c(_naif_context, tracelen, tracestr)
+    libspice.qcktrc_c(getNaifContext(), tracelen, tracestr)
     return stypes.toPythonString(tracestr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def qdq2av(q, dq):
     """
     Derive angular velocity from a unit quaternion and its derivative
@@ -10110,11 +10541,12 @@ def qdq2av(q, dq):
     q = stypes.toDoubleVector(q)
     dq = stypes.toDoubleVector(dq)
     vout = stypes.emptyDoubleVector(3)
-    libspice.qdq2av_c(_naif_context, q, dq, vout)
+    libspice.qdq2av_c(getNaifContext(), q, dq, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def qxq(q1, q2):
     """
     Multiply two quaternions.
@@ -10131,7 +10563,7 @@ def qxq(q1, q2):
     q1 = stypes.toDoubleVector(q1)
     q2 = stypes.toDoubleVector(q2)
     vout = stypes.emptyDoubleVector(4)
-    libspice.qxq_c(_naif_context, q1, q2, vout)
+    libspice.qxq_c(getNaifContext(), q1, q2, vout)
     return stypes.cVectorToPython(vout)
 
 
@@ -10140,6 +10572,7 @@ def qxq(q1, q2):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def radrec(inrange, re, dec):
     """
     Convert from range, right ascension, and declination to rectangular
@@ -10160,11 +10593,12 @@ def radrec(inrange, re, dec):
     re = ctypes.c_double(re)
     dec = ctypes.c_double(dec)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.radrec_c(_naif_context, inrange, re, dec, rectan)
+    libspice.radrec_c(getNaifContext(), inrange, re, dec, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rav2xf(rot, av):
     """
     This routine determines a state transformation matrix
@@ -10183,11 +10617,12 @@ def rav2xf(rot, av):
     rot = stypes.toDoubleMatrix(rot)
     av = stypes.toDoubleVector(av)
     xform = stypes.emptyDoubleMatrix(x=6, y=6)
-    libspice.rav2xf_c(_naif_context, rot, av, xform)
+    libspice.rav2xf_c(getNaifContext(), rot, av, xform)
     return stypes.cMatrixToNumpy(xform)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def raxisa(matrix):
     """
     Compute the axis of the rotation given by an input matrix
@@ -10203,11 +10638,12 @@ def raxisa(matrix):
     matrix = stypes.toDoubleMatrix(matrix)
     axis = stypes.emptyDoubleVector(3)
     angle = ctypes.c_double()
-    libspice.raxisa_c(_naif_context, matrix, axis, ctypes.byref(angle))
+    libspice.raxisa_c(getNaifContext(), matrix, axis, ctypes.byref(angle))
     return stypes.cVectorToPython(axis), angle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rdtext(file, lenout=_default_len_out):  # pragma: no cover
     """
     Read the next line of text from a text file.
@@ -10225,11 +10661,12 @@ def rdtext(file, lenout=_default_len_out):  # pragma: no cover
     line = stypes.stringToCharP(lenout)
     lenout = ctypes.c_int(lenout)
     eof = ctypes.c_int()
-    libspice.rdtext_c(_naif_context, file, lenout, line, ctypes.byref(eof))
+    libspice.rdtext_c(getNaifContext(), file, lenout, line, ctypes.byref(eof))
     return stypes.toPythonString(line), bool(eof.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reccyl(rectan):
     """
     Convert from rectangular to cylindrical coordinates.
@@ -10248,12 +10685,13 @@ def reccyl(rectan):
     radius = ctypes.c_double(0)
     lon = ctypes.c_double(0)
     z = ctypes.c_double(0)
-    libspice.reccyl_c(_naif_context, rectan, ctypes.byref(radius), ctypes.byref(lon),
+    libspice.reccyl_c(getNaifContext(), rectan, ctypes.byref(radius), ctypes.byref(lon),
                       ctypes.byref(z))
     return radius.value, lon.value, z.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def recgeo(rectan, re, f):
     """
     Convert from rectangular coordinates to geodetic coordinates.
@@ -10278,12 +10716,13 @@ def recgeo(rectan, re, f):
     longitude = ctypes.c_double(0)
     latitude = ctypes.c_double(0)
     alt = ctypes.c_double(0)
-    libspice.recgeo_c(_naif_context, rectan, re, f, ctypes.byref(longitude),
+    libspice.recgeo_c(getNaifContext(), rectan, re, f, ctypes.byref(longitude),
                       ctypes.byref(latitude), ctypes.byref(alt))
     return longitude.value, latitude.value, alt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reclat(rectan):
     """
     Convert from rectangular coordinates to latitudinal coordinates.
@@ -10299,12 +10738,13 @@ def reclat(rectan):
     radius = ctypes.c_double(0)
     longitude = ctypes.c_double(0)
     latitude = ctypes.c_double(0)
-    libspice.reclat_c(_naif_context, rectan, ctypes.byref(radius), ctypes.byref(longitude),
+    libspice.reclat_c(getNaifContext(), rectan, ctypes.byref(radius), ctypes.byref(longitude),
                       ctypes.byref(latitude))
     return radius.value, longitude.value, latitude.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def recpgr(body, rectan, re, f):
     """
     Convert rectangular coordinates to planetographic coordinates.
@@ -10332,12 +10772,13 @@ def recpgr(body, rectan, re, f):
     lon = ctypes.c_double()
     lat = ctypes.c_double()
     alt = ctypes.c_double()
-    libspice.recpgr_c(_naif_context, body, rectan, re, f, ctypes.byref(lon), ctypes.byref(lat),
+    libspice.recpgr_c(getNaifContext(), body, rectan, re, f, ctypes.byref(lon), ctypes.byref(lat),
                       ctypes.byref(alt))
     return lon.value, lat.value, alt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def recrad(rectan):
     """
     Convert rectangular coordinates to range, right ascension, and declination.
@@ -10356,12 +10797,13 @@ def recrad(rectan):
     outrange = ctypes.c_double()
     ra = ctypes.c_double()
     dec = ctypes.c_double()
-    libspice.recrad_c(_naif_context, rectan, ctypes.byref(outrange), ctypes.byref(ra),
+    libspice.recrad_c(getNaifContext(), rectan, ctypes.byref(outrange), ctypes.byref(ra),
                       ctypes.byref(dec))
     return outrange.value, ra.value, dec.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def recsph(rectan):
     """
     Convert from rectangular coordinates to spherical coordinates.
@@ -10380,12 +10822,13 @@ def recsph(rectan):
     r = ctypes.c_double()
     colat = ctypes.c_double()
     lon = ctypes.c_double()
-    libspice.recsph_c(_naif_context, rectan, ctypes.byref(r), ctypes.byref(colat),
+    libspice.recsph_c(getNaifContext(), rectan, ctypes.byref(r), ctypes.byref(colat),
                       ctypes.byref(lon))
     return r.value, colat.value, lon.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def removc(item, inset):
     """
     Remove an item from a character set.
@@ -10400,10 +10843,11 @@ def removc(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.dtype == 0
     item = stypes.stringToCharP(item)
-    libspice.removc_c(_naif_context, item, ctypes.byref(inset))
+    libspice.removc_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def removd(item, inset):
     """
     Remove an item from a double precision set.
@@ -10418,10 +10862,11 @@ def removd(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.dtype == 1
     item = ctypes.c_double(item)
-    libspice.removd_c(_naif_context, item, ctypes.byref(inset))
+    libspice.removd_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def removi(item, inset):
     """
     Remove an item from an integer set.
@@ -10436,10 +10881,11 @@ def removi(item, inset):
     assert isinstance(inset, stypes.SpiceCell)
     assert inset.dtype == 2
     item = ctypes.c_int(item)
-    libspice.removi_c(_naif_context, item, ctypes.byref(inset))
+    libspice.removi_c(getNaifContext(), item, ctypes.byref(inset))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reordc(iorder, ndim, lenvals, array):
     """
     Re-order the elements of an array of character strings
@@ -10462,11 +10908,12 @@ def reordc(iorder, ndim, lenvals, array):
     ndim = ctypes.c_int(ndim)
     lenvals = ctypes.c_int(lenvals + 1)
     array = stypes.listToCharArray(array, xLen=lenvals, yLen=ndim)
-    libspice.reordc_c(_naif_context, iorder, ndim, lenvals, array)
+    libspice.reordc_c(getNaifContext(), iorder, ndim, lenvals, array)
     return [stypes.toPythonString(x.value) for x in array]
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reordd(iorder, ndim, array):
     """
     Re-order the elements of a double precision array according to
@@ -10486,11 +10933,12 @@ def reordd(iorder, ndim, array):
     iorder = stypes.toIntVector(iorder)
     ndim = ctypes.c_int(ndim)
     array = stypes.toDoubleVector(array)
-    libspice.reordd_c(_naif_context, iorder, ndim, array)
+    libspice.reordd_c(getNaifContext(), iorder, ndim, array)
     return stypes.cVectorToPython(array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reordi(iorder, ndim, array):
     """
     Re-order the elements of an integer array according to
@@ -10510,11 +10958,12 @@ def reordi(iorder, ndim, array):
     iorder = stypes.toIntVector(iorder)
     ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
-    libspice.reordi_c(_naif_context, iorder, ndim, array)
+    libspice.reordi_c(getNaifContext(), iorder, ndim, array)
     return stypes.cVectorToPython(array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def reordl(iorder, ndim, array):
     """
     Re-order the elements of a logical (Boolean) array according to
@@ -10534,11 +10983,12 @@ def reordl(iorder, ndim, array):
     iorder = stypes.toIntVector(iorder)
     ndim = ctypes.c_int(ndim)
     array = stypes.toIntVector(array)
-    libspice.reordl_c(_naif_context, iorder, ndim, array)
+    libspice.reordl_c(getNaifContext(), iorder, ndim, array)
     return stypes.cIntVectorToBoolPython(array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmc(instr, marker, value, lenout=None):
     """
     Replace a marker with a character string.
@@ -10562,11 +11012,12 @@ def repmc(instr, marker, value, lenout=None):
     marker = stypes.stringToCharP(marker)
     value = stypes.stringToCharP(value)
     out = stypes.stringToCharP(lenout)
-    libspice.repmc_c(_naif_context, instr, marker, value, lenout, out)
+    libspice.repmc_c(getNaifContext(), instr, marker, value, lenout, out)
     return stypes.toPythonString(out)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmct(instr, marker, value, repcase, lenout=None):
     """
     Replace a marker with the text representation of a
@@ -10594,11 +11045,12 @@ def repmct(instr, marker, value, repcase, lenout=None):
     value = ctypes.c_int(value)
     repcase = ctypes.c_char(repcase.encode(encoding='UTF-8'))
     out = stypes.stringToCharP(lenout)
-    libspice.repmct_c(_naif_context, instr, marker, value, repcase, lenout, out)
+    libspice.repmct_c(getNaifContext(), instr, marker, value, repcase, lenout, out)
     return stypes.toPythonString(out)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmd(instr, marker, value, sigdig):
     """
     Replace a marker with a double precision number.
@@ -10622,11 +11074,12 @@ def repmd(instr, marker, value, sigdig):
     value = ctypes.c_double(value)
     sigdig = ctypes.c_int(sigdig)
     out = stypes.stringToCharP(lenout)
-    libspice.repmd_c(_naif_context, instr, marker, value, sigdig, lenout, out)
+    libspice.repmd_c(getNaifContext(), instr, marker, value, sigdig, lenout, out)
     return stypes.toPythonString(out)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmf(instr, marker, value, sigdig, informat, lenout=None):
     """
     Replace a marker in a string with a formatted double precision value.
@@ -10656,11 +11109,12 @@ def repmf(instr, marker, value, sigdig, informat, lenout=None):
     sigdig = ctypes.c_int(sigdig)
     informat = ctypes.c_char(informat.encode(encoding='UTF-8'))
     out = stypes.stringToCharP(lenout)
-    libspice.repmf_c(_naif_context, instr, marker, value, sigdig, informat, lenout, out)
+    libspice.repmf_c(getNaifContext(), instr, marker, value, sigdig, informat, lenout, out)
     return stypes.toPythonString(out)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmi(instr, marker, value, lenout=None):
     """
     Replace a marker with an integer.
@@ -10684,11 +11138,12 @@ def repmi(instr, marker, value, lenout=None):
     marker = stypes.stringToCharP(marker)
     value = ctypes.c_int(value)
     out = stypes.stringToCharP(lenout)
-    libspice.repmi_c(_naif_context, instr, marker, value, lenout, out)
+    libspice.repmi_c(getNaifContext(), instr, marker, value, lenout, out)
     return stypes.toPythonString(out)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def repmot(instr, marker, value, repcase, lenout=None):
     """
     Replace a marker with the text representation of an ordinal number.
@@ -10715,10 +11170,11 @@ def repmot(instr, marker, value, repcase, lenout=None):
     value = ctypes.c_int(value)
     repcase = ctypes.c_char(repcase.encode(encoding='UTF-8'))
     out = stypes.stringToCharP(lenout)
-    libspice.repmot_c(_naif_context, instr, marker, value, repcase, lenout, out)
+    libspice.repmot_c(getNaifContext(), instr, marker, value, repcase, lenout, out)
     return stypes.toPythonString(out)
 
 
+@assertNaifContext
 def reset():
     """
     Reset the SPICE error status to a value of "no error."
@@ -10728,10 +11184,11 @@ def reset():
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/reset_c.html
 
     """
-    libspice.reset_c(_naif_context)
+    libspice.reset_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def return_c():
     """
     True if SPICE routines should return immediately upon entry.
@@ -10741,10 +11198,11 @@ def return_c():
     :return: True if SPICE routines should return immediately upon entry.
     :rtype: bool
     """
-    return bool(libspice.return_c(_naif_context))
+    return bool(libspice.return_c(getNaifContext()))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rotate(angle, iaxis):
     """
     Calculate the 3x3 rotation matrix generated by a rotation
@@ -10763,11 +11221,12 @@ def rotate(angle, iaxis):
     angle = ctypes.c_double(angle)
     iaxis = ctypes.c_int(iaxis)
     mout = stypes.emptyDoubleMatrix()
-    libspice.rotate_c(_naif_context, angle, iaxis, mout)
+    libspice.rotate_c(getNaifContext(), angle, iaxis, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rotmat(m1, angle, iaxis):
     """
     Rotmat applies a rotation of angle radians about axis iaxis to a
@@ -10789,11 +11248,12 @@ def rotmat(m1, angle, iaxis):
     angle = ctypes.c_double(angle)
     iaxis = ctypes.c_int(iaxis)
     mout = stypes.emptyDoubleMatrix()
-    libspice.rotmat_c(_naif_context, m1, angle, iaxis, mout)
+    libspice.rotmat_c(getNaifContext(), m1, angle, iaxis, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rotvec(v1, angle, iaxis):
     """
     Transform a vector to a new coordinate system rotated by angle
@@ -10815,11 +11275,12 @@ def rotvec(v1, angle, iaxis):
     angle = ctypes.c_double(angle)
     iaxis = ctypes.c_int(iaxis)
     vout = stypes.emptyDoubleVector(3)
-    libspice.rotvec_c(_naif_context, v1, angle, iaxis, vout)
+    libspice.rotvec_c(getNaifContext(), v1, angle, iaxis, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rpd():
     """
     Return the number of radians per degree.
@@ -10829,10 +11290,11 @@ def rpd():
     :return: The number of radians per degree, pi/180.
     :rtype: float
     """
-    return libspice.rpd_c(_naif_context)
+    return libspice.rpd_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def rquad(a, b, c):
     """
     Find the roots of a quadratic equation.
@@ -10853,7 +11315,7 @@ def rquad(a, b, c):
     c = ctypes.c_double(c)
     root1 = stypes.emptyDoubleVector(2)
     root2 = stypes.emptyDoubleVector(2)
-    libspice.rquad_c(_naif_context, a, b, c, root1, root2)
+    libspice.rquad_c(getNaifContext(), a, b, c, root1, root2)
     return stypes.cVectorToPython(root1), stypes.cVectorToPython(root2)
 
 
@@ -10862,6 +11324,7 @@ def rquad(a, b, c):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def saelgv(vec1, vec2):
     """
     Find semi-axis vectors of an ellipse generated by two arbitrary
@@ -10880,11 +11343,12 @@ def saelgv(vec1, vec2):
     vec2 = stypes.toDoubleVector(vec2)
     smajor = stypes.emptyDoubleVector(3)
     sminor = stypes.emptyDoubleVector(3)
-    libspice.saelgv_c(_naif_context, vec1, vec2, smajor, sminor)
+    libspice.saelgv_c(getNaifContext(), vec1, vec2, smajor, sminor)
     return stypes.cVectorToPython(smajor), stypes.cVectorToPython(sminor)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scard(incard, cell):
     """
     Set the cardinality of a SPICE cell of any data type.
@@ -10900,11 +11364,12 @@ def scard(incard, cell):
     """
     assert isinstance(cell, stypes.SpiceCell)
     incard = ctypes.c_int(incard)
-    libspice.scard_c(_naif_context, incard, ctypes.byref(cell))
+    libspice.scard_c(getNaifContext(), incard, ctypes.byref(cell))
     return cell
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scdecd(sc, sclkdp, lenout=_default_len_out, MXPART=None):
     # todo: figure out how to use mxpart
     """
@@ -10928,11 +11393,12 @@ def scdecd(sc, sclkdp, lenout=_default_len_out, MXPART=None):
     sclkdp = ctypes.c_double(sclkdp)
     sclkch = stypes.stringToCharP(" " * lenout)
     lenout = ctypes.c_int(lenout)
-    libspice.scdecd_c(_naif_context, sc, sclkdp, lenout, sclkch)
+    libspice.scdecd_c(getNaifContext(), sc, sclkdp, lenout, sclkch)
     return stypes.toPythonString(sclkch)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sce2c(sc, et):
     """
     Convert ephemeris seconds past J2000 (ET) to continuous encoded
@@ -10953,11 +11419,12 @@ def sce2c(sc, et):
     sc = ctypes.c_int(sc)
     et = ctypes.c_double(et)
     sclkdp = ctypes.c_double()
-    libspice.sce2c_c(_naif_context, sc, et, ctypes.byref(sclkdp))
+    libspice.sce2c_c(getNaifContext(), sc, et, ctypes.byref(sclkdp))
     return sclkdp.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sce2s(sc, et, lenout=_default_len_out):
     """
     Convert an epoch specified as ephemeris seconds past J2000 (ET) to a
@@ -10978,11 +11445,12 @@ def sce2s(sc, et, lenout=_default_len_out):
     et = ctypes.c_double(et)
     sclkch = stypes.stringToCharP(" " * lenout)
     lenout = ctypes.c_int(lenout)
-    libspice.sce2s_c(_naif_context, sc, et, lenout, sclkch)
+    libspice.sce2s_c(getNaifContext(), sc, et, lenout, sclkch)
     return stypes.toPythonString(sclkch)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sce2t(sc, et):
     """
     Convert ephemeris seconds past J2000 (ET) to integral
@@ -11002,11 +11470,12 @@ def sce2t(sc, et):
     sc = ctypes.c_int(sc)
     et = ctypes.c_double(et)
     sclkdp = ctypes.c_double()
-    libspice.sce2t_c(_naif_context, sc, et, ctypes.byref(sclkdp))
+    libspice.sce2t_c(getNaifContext(), sc, et, ctypes.byref(sclkdp))
     return sclkdp.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scencd(sc, sclkch, MXPART=None):
     """
     Encode character representation of spacecraft clock time into a
@@ -11028,16 +11497,17 @@ def scencd(sc, sclkch, MXPART=None):
     if stypes.isiterable(sclkch):
         results = []
         for chars in sclkch:
-            libspice.scencd_c(_naif_context, sc, stypes.stringToCharP(chars), ctypes.byref(sclkdp))
+            libspice.scencd_c(getNaifContext(), sc, stypes.stringToCharP(chars), ctypes.byref(sclkdp))
             checkForSpiceError(None)
             results.append(sclkdp.value)
         return results
     else:
-        libspice.scencd_c(_naif_context, sc, stypes.stringToCharP(sclkch), ctypes.byref(sclkdp))
+        libspice.scencd_c(getNaifContext(), sc, stypes.stringToCharP(sclkch), ctypes.byref(sclkdp))
         return sclkdp.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scfmt(sc, ticks, lenout=_default_len_out):
     """
     Convert encoded spacecraft clock ticks to character clock format.
@@ -11057,11 +11527,12 @@ def scfmt(sc, ticks, lenout=_default_len_out):
     ticks = ctypes.c_double(ticks)
     clkstr = stypes.stringToCharP(lenout)
     lenout = ctypes.c_int(lenout)
-    libspice.scfmt_c(_naif_context, sc, ticks, lenout, clkstr)
+    libspice.scfmt_c(getNaifContext(), sc, ticks, lenout, clkstr)
     return stypes.toPythonString(clkstr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scpart(sc):
     """
     Get spacecraft clock partition information from a spacecraft
@@ -11081,12 +11552,13 @@ def scpart(sc):
     nparts = ctypes.c_int()
     pstart = stypes.emptyDoubleVector(9999)
     pstop = stypes.emptyDoubleVector(9999)
-    libspice.scpart_c(_naif_context, sc, nparts, pstart, pstop)
+    libspice.scpart_c(getNaifContext(), sc, nparts, pstart, pstop)
     return stypes.cVectorToPython(pstart)[0:nparts.value], stypes.cVectorToPython(
             pstop)[0:nparts.value]
 
 
 @spiceErrorCheck
+@assertNaifContext
 def scs2e(sc, sclkch):
     """
     Convert a spacecraft clock string to ephemeris seconds past J2000 (ET).
@@ -11103,11 +11575,12 @@ def scs2e(sc, sclkch):
     sc = ctypes.c_int(sc)
     sclkch = stypes.stringToCharP(sclkch)
     et = ctypes.c_double()
-    libspice.scs2e_c(_naif_context, sc, sclkch, ctypes.byref(et))
+    libspice.scs2e_c(getNaifContext(), sc, sclkch, ctypes.byref(et))
     return et.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sct2e(sc, sclkdp):
     """
     Convert encoded spacecraft clock ("ticks") to ephemeris
@@ -11127,17 +11600,18 @@ def sct2e(sc, sclkdp):
     if stypes.isiterable(sclkdp):
         results = []
         for sclk in sclkdp:
-            libspice.sct2e_c(_naif_context, sc, ctypes.c_double(sclk), ctypes.byref(et))        
+            libspice.sct2e_c(getNaifContext(), sc, ctypes.c_double(sclk), ctypes.byref(et))        
             checkForSpiceError(None)
             results.append(et.value)
         return results
     else:
         sclkdp = ctypes.c_double(sclkdp)
-        libspice.sct2e_c(_naif_context, sc, sclkdp, ctypes.byref(et))
+        libspice.sct2e_c(getNaifContext(), sc, sclkdp, ctypes.byref(et))
         return et.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sctiks(sc, clkstr):
     """
     Convert a spacecraft clock format string to number of "ticks".
@@ -11154,11 +11628,12 @@ def sctiks(sc, clkstr):
     sc = ctypes.c_int(sc)
     clkstr = stypes.stringToCharP(clkstr)
     ticks = ctypes.c_double()
-    libspice.sctiks_c(_naif_context, sc, clkstr, ctypes.byref(ticks))
+    libspice.sctiks_c(getNaifContext(), sc, clkstr, ctypes.byref(ticks))
     return ticks.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sdiff(a, b):
     """
     Take the symmetric difference of two sets of any data type to form a
@@ -11186,11 +11661,12 @@ def sdiff(a, b):
         c = stypes.SPICEINT_CELL(a.size)
     else:
         raise NotImplementedError
-    libspice.sdiff_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.sdiff_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def set_c(a, op, b):
     """
     Given a relational operator, compare two sets of any data type.
@@ -11211,10 +11687,11 @@ def set_c(a, op, b):
     assert a.dtype == b.dtype
     assert isinstance(op, str)
     op = stypes.stringToCharP(op)
-    return bool(libspice.set_c(_naif_context, ctypes.byref(a), op, ctypes.byref(b)))
+    return bool(libspice.set_c(getNaifContext(), ctypes.byref(a), op, ctypes.byref(b)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def setmsg(message):
     """
     Set the value of the current long error message.
@@ -11225,10 +11702,11 @@ def setmsg(message):
     :type message: str
     """
     message = stypes.stringToCharP(message)
-    libspice.setmsg_c(_naif_context, message)
+    libspice.setmsg_c(getNaifContext(), message)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def shellc(ndim, lenvals, array):
     # This works! looks like this is a mutable 2d char array
     """
@@ -11249,11 +11727,12 @@ def shellc(ndim, lenvals, array):
     array = stypes.listToCharArray(array, xLen=lenvals, yLen=ndim)
     ndim = ctypes.c_int(ndim)
     lenvals = ctypes.c_int(lenvals)
-    libspice.shellc_c(_naif_context, ndim, lenvals, ctypes.byref(array))
+    libspice.shellc_c(getNaifContext(), ndim, lenvals, ctypes.byref(array))
     return stypes.cVectorToPython(array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def shelld(ndim, array):
     # Works!, use this as example for "I/O" parameters
     """
@@ -11270,11 +11749,12 @@ def shelld(ndim, array):
     """
     array = stypes.toDoubleVector(array)
     ndim = ctypes.c_int(ndim)
-    libspice.shelld_c(_naif_context, ndim, ctypes.cast(array, ctypes.POINTER(ctypes.c_double)))
+    libspice.shelld_c(getNaifContext(), ndim, ctypes.cast(array, ctypes.POINTER(ctypes.c_double)))
     return stypes.cVectorToPython(array)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def shelli(ndim, array):
     # Works!, use this as example for "I/O" parameters
     """
@@ -11291,10 +11771,11 @@ def shelli(ndim, array):
     """
     array = stypes.toIntVector(array)
     ndim = ctypes.c_int(ndim)
-    libspice.shelli_c(_naif_context, ndim, ctypes.cast(array, ctypes.POINTER(ctypes.c_int)))
+    libspice.shelli_c(getNaifContext(), ndim, ctypes.cast(array, ctypes.POINTER(ctypes.c_int)))
     return stypes.cVectorToPython(array)
 
 
+@assertNaifContext
 def sigerr(message):
     """
     Inform the CSPICE error processing mechanism that an error has
@@ -11306,11 +11787,12 @@ def sigerr(message):
     :type message: str
     """
     message = stypes.stringToCharP(message)
-    libspice.sigerr_c(_naif_context, message)
+    libspice.sigerr_c(getNaifContext(), message)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def sincpt(method, target, et, fixref, abcorr, obsrvr, dref, dvec):
     """
     Given an observer and a direction vector defining a ray, compute
@@ -11356,13 +11838,14 @@ def sincpt(method, target, et, fixref, abcorr, obsrvr, dref, dvec):
     trgepc = ctypes.c_double(0)
     srfvec = stypes.emptyDoubleVector(3)
     found = ctypes.c_int(0)
-    libspice.sincpt_c(_naif_context, method, target, et, fixref, abcorr, obsrvr, dref, dvec,
+    libspice.sincpt_c(getNaifContext(), method, target, et, fixref, abcorr, obsrvr, dref, dvec,
                       spoint, ctypes.byref(trgepc), srfvec, ctypes.byref(found))
     return stypes.cVectorToPython(spoint), trgepc.value, stypes.cVectorToPython(
             srfvec), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def size(cell):
     """
     Return the size (maximum cardinality) of a SPICE cell of any
@@ -11376,10 +11859,11 @@ def size(cell):
     :rtype: int
     """
     assert isinstance(cell, stypes.SpiceCell)
-    return libspice.size_c(_naif_context, ctypes.byref(cell))
+    return libspice.size_c(getNaifContext(), ctypes.byref(cell))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spd():
     """
     Return the number of seconds in a day.
@@ -11389,10 +11873,11 @@ def spd():
     :return: The number of seconds in a day.
     :rtype: float
     """
-    return libspice.spd_c(_naif_context)
+    return libspice.spd_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sphcyl(radius, colat, slon):
     """
     This routine converts from spherical coordinates to cylindrical
@@ -11418,12 +11903,13 @@ def sphcyl(radius, colat, slon):
     r = ctypes.c_double()
     lon = ctypes.c_double()
     z = ctypes.c_double()
-    libspice.sphcyl_c(_naif_context, radius, colat, slon, ctypes.byref(r), ctypes.byref(lon),
+    libspice.sphcyl_c(getNaifContext(), radius, colat, slon, ctypes.byref(r), ctypes.byref(lon),
                       ctypes.byref(z))
     return r.value, lon.value, z.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sphlat(r, colat, lons):
     """
     Convert from spherical coordinates to latitudinal coordinates.
@@ -11448,12 +11934,13 @@ def sphlat(r, colat, lons):
     radius = ctypes.c_double()
     lon = ctypes.c_double()
     lat = ctypes.c_double()
-    libspice.sphcyl_c(_naif_context, r, colat, lons, ctypes.byref(radius), ctypes.byref(lon),
+    libspice.sphcyl_c(getNaifContext(), r, colat, lons, ctypes.byref(radius), ctypes.byref(lon),
                       ctypes.byref(lat))
     return radius.value, lon.value, lat.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sphrec(r, colat, lon):
     """
     Convert from spherical coordinates to rectangular coordinates.
@@ -11473,11 +11960,12 @@ def sphrec(r, colat, lon):
     colat = ctypes.c_double(colat)
     lon = ctypes.c_double(lon)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.sphrec_c(_naif_context, r, colat, lon, rectan)
+    libspice.sphrec_c(getNaifContext(), r, colat, lon, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkacs(targ, et, ref, abcorr, obs):
     """
     Return the state (position and velocity) of a target body
@@ -11511,12 +11999,13 @@ def spkacs(targ, et, ref, abcorr, obs):
     starg = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
     dlt = ctypes.c_double()
-    libspice.spkacs_c(_naif_context, targ, et, ref, abcorr, obs, starg, ctypes.byref(lt),
+    libspice.spkacs_c(getNaifContext(), targ, et, ref, abcorr, obs, starg, ctypes.byref(lt),
                       ctypes.byref(dlt))
     return stypes.cVectorToPython(starg), lt.value, dlt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkapo(targ, et, ref, sobs, abcorr):
     """
     Return the position of a target body relative to an observer,
@@ -11546,11 +12035,12 @@ def spkapo(targ, et, ref, sobs, abcorr):
     sobs = stypes.toDoubleVector(sobs)
     ptarg = stypes.emptyDoubleVector(3)
     lt = ctypes.c_double()
-    libspice.spkapo_c(_naif_context, targ, et, ref, sobs, abcorr, ptarg, ctypes.byref(lt))
+    libspice.spkapo_c(getNaifContext(), targ, et, ref, sobs, abcorr, ptarg, ctypes.byref(lt))
     return stypes.cVectorToPython(ptarg), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkapp(targ, et, ref, sobs, abcorr):
     """
     Deprecated: This routine has been superseded by :func:`spkaps`. This
@@ -11584,11 +12074,12 @@ def spkapp(targ, et, ref, sobs, abcorr):
     sobs = stypes.toDoubleVector(sobs)
     starg = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkapp_c(_naif_context, targ, et, ref, sobs, abcorr, starg, ctypes.byref(lt))
+    libspice.spkapp_c(getNaifContext(), targ, et, ref, sobs, abcorr, starg, ctypes.byref(lt))
     return stypes.cVectorToPython(starg), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkaps(targ, et, ref, abcorr, stobs, accobs):
     """
     Given the state and acceleration of an observer relative to the
@@ -11630,12 +12121,13 @@ def spkaps(targ, et, ref, abcorr, stobs, accobs):
     starg = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
     dlt = ctypes.c_double()
-    libspice.spkaps_c(_naif_context, targ, et, ref, abcorr, stobs, accobs, starg,
+    libspice.spkaps_c(getNaifContext(), targ, et, ref, abcorr, stobs, accobs, starg,
                       ctypes.byref(lt), ctypes.byref(dlt))
     return stypes.cVectorToPython(starg), lt.value, dlt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spk14a(handle, ncsets, coeffs, epochs):
     """
     Add data to a type 14 SPK segment associated with handle. See
@@ -11656,10 +12148,11 @@ def spk14a(handle, ncsets, coeffs, epochs):
     ncsets = ctypes.c_int(ncsets)
     coeffs = stypes.toDoubleVector(coeffs)
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spk14a_c(_naif_context, handle, ncsets, coeffs, epochs)
+    libspice.spk14a_c(getNaifContext(), handle, ncsets, coeffs, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spk14b(handle, segid, body, center, framename, first, last, chbdeg):
     """
     Begin a type 14 SPK segment in the SPK file associated with
@@ -11692,11 +12185,12 @@ def spk14b(handle, segid, body, center, framename, first, last, chbdeg):
     first = ctypes.c_double(first)
     last = ctypes.c_double(last)
     chbdeg = ctypes.c_int(chbdeg)
-    libspice.spk14b_c(_naif_context, handle, segid, body, center, framename, first, last,
+    libspice.spk14b_c(getNaifContext(), handle, segid, body, center, framename, first, last,
                       chbdeg)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spk14e(handle):
     """
     End the type 14 SPK segment currently being written to the SPK
@@ -11708,10 +12202,11 @@ def spk14e(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.spk14e_c(_naif_context, handle)
+    libspice.spk14e_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcls(handle):
     """
     Close an open SPK file.
@@ -11722,10 +12217,11 @@ def spkcls(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.spkcls_c(_naif_context, handle)
+    libspice.spkcls_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcov(spk, idcode, cover=None):
     """
     Find the coverage window for a specified ephemeris object in a
@@ -11747,11 +12243,12 @@ def spkcov(spk, idcode, cover=None):
     else:
         assert isinstance(cover, stypes.SpiceCell)
         assert cover.is_double()
-    libspice.spkcov_c(_naif_context, spk, idcode, ctypes.byref(cover))
+    libspice.spkcov_c(getNaifContext(), spk, idcode, ctypes.byref(cover))
     return cover
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcpo(target, et, outref, refloc, abcorr, obspos, obsctr, obsref):
     """
     Return the state of a specified target relative to an "observer,"
@@ -11792,12 +12289,13 @@ def spkcpo(target, et, outref, refloc, abcorr, obspos, obsctr, obsref):
     obsref = stypes.stringToCharP(obsref)
     state = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkcpo_c(_naif_context, target, et, outref, refloc, abcorr, obspos, obsctr,
+    libspice.spkcpo_c(getNaifContext(), target, et, outref, refloc, abcorr, obspos, obsctr,
                       obsref, state, ctypes.byref(lt))
     return stypes.cVectorToPython(state), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcpt(trgpos, trgctr, trgref, et, outref, refloc, abcorr, obsrvr):
     """
     Return the state, relative to a specified observer, of a target
@@ -11837,12 +12335,13 @@ def spkcpt(trgpos, trgctr, trgref, et, outref, refloc, abcorr, obsrvr):
     obsrvr = stypes.stringToCharP(obsrvr)
     state = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkcpt_c(_naif_context, trgpos, trgctr, trgref, et, outref, refloc, abcorr,
+    libspice.spkcpt_c(getNaifContext(), trgpos, trgctr, trgref, et, outref, refloc, abcorr,
                       obsrvr, state, ctypes.byref(lt))
     return stypes.cVectorToPython(state), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcvo(target, et, outref, refloc, abcorr, obssta, obsepc, obsctr, obsref):
     """
     Return the state of a specified target relative to an "observer,"
@@ -11886,12 +12385,13 @@ def spkcvo(target, et, outref, refloc, abcorr, obssta, obsepc, obsctr, obsref):
     obsref = stypes.stringToCharP(obsref)
     state = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkcvo_c(_naif_context, target, et, outref, refloc, abcorr, obssta, obsepc,
+    libspice.spkcvo_c(getNaifContext(), target, et, outref, refloc, abcorr, obssta, obsepc,
                       obsctr, obsref, state, ctypes.byref(lt))
     return stypes.cVectorToPython(state), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkcvt(trgsta, trgepc, trgctr, trgref, et, outref, refloc, abcorr, obsrvr):
     """
     Return the state, relative to a specified observer, of a target
@@ -11935,12 +12435,13 @@ def spkcvt(trgsta, trgepc, trgctr, trgref, et, outref, refloc, abcorr, obsrvr):
     obsrvr = stypes.stringToCharP(obsrvr)
     state = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkcvt_c(_naif_context, trgpos, trgepc, trgctr, trgref, et, outref, refloc,
+    libspice.spkcvt_c(getNaifContext(), trgpos, trgepc, trgctr, trgref, et, outref, refloc,
                       abcorr, obsrvr, state, ctypes.byref(lt))
     return stypes.cVectorToPython(state), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkez(targ, et, ref, abcorr, obs):
     """
     Return the state (position and velocity) of a target body
@@ -11971,11 +12472,12 @@ def spkez(targ, et, ref, abcorr, obs):
     obs = ctypes.c_int(obs)
     starg = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkez_c(_naif_context, targ, et, ref, abcorr, obs, starg, ctypes.byref(lt))
+    libspice.spkez_c(getNaifContext(), targ, et, ref, abcorr, obs, starg, ctypes.byref(lt))
     return stypes.cVectorToPython(starg), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkezp(targ, et, ref, abcorr, obs):
     """
     Return the position of a target body relative to an observing
@@ -12006,11 +12508,12 @@ def spkezp(targ, et, ref, abcorr, obs):
     obs = ctypes.c_int(obs)
     ptarg = stypes.emptyDoubleVector(3)
     lt = ctypes.c_double()
-    libspice.spkezp_c(_naif_context, targ, et, ref, abcorr, obs, ptarg, ctypes.byref(lt))
+    libspice.spkezp_c(getNaifContext(), targ, et, ref, abcorr, obs, ptarg, ctypes.byref(lt))
     return stypes.cVectorToPython(ptarg), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkezr(targ, et, ref, abcorr, obs):
     """
     Return the state (position and velocity) of a target body
@@ -12044,16 +12547,17 @@ def spkezr(targ, et, ref, abcorr, obs):
         states = []
         times = []
         for t in et:
-            libspice.spkezr_c(_naif_context, targ, ctypes.c_double(t), ref, abcorr, obs, starg, ctypes.byref(lt))
+            libspice.spkezr_c(getNaifContext(), targ, ctypes.c_double(t), ref, abcorr, obs, starg, ctypes.byref(lt))
             checkForSpiceError(None)
             states.append(stypes.cVectorToPython(starg))
             times.append(lt.value)
         return states, times
     else:
-        libspice.spkezr_c(_naif_context, targ, ctypes.c_double(et), ref, abcorr, obs, starg, ctypes.byref(lt))
+        libspice.spkezr_c(getNaifContext(), targ, ctypes.c_double(et), ref, abcorr, obs, starg, ctypes.byref(lt))
         return stypes.cVectorToPython(starg), lt.value
 
 @spiceErrorCheck
+@assertNaifContext
 def spkgeo(targ, et, ref, obs):
     """
     Compute the geometric state (position and velocity) of a target
@@ -12078,11 +12582,12 @@ def spkgeo(targ, et, ref, obs):
     obs = ctypes.c_int(obs)
     state = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
-    libspice.spkgeo_c(_naif_context, targ, et, ref, obs, state, ctypes.byref(lt))
+    libspice.spkgeo_c(getNaifContext(), targ, et, ref, obs, state, ctypes.byref(lt))
     return stypes.cVectorToPython(state), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkgps(targ, et, ref, obs):
     """
     Compute the geometric position of a target body relative to an
@@ -12107,11 +12612,12 @@ def spkgps(targ, et, ref, obs):
     obs = ctypes.c_int(obs)
     position = stypes.emptyDoubleVector(3)
     lt = ctypes.c_double()
-    libspice.spkgps_c(_naif_context, targ, et, ref, obs, position, ctypes.byref(lt))
+    libspice.spkgps_c(getNaifContext(), targ, et, ref, obs, position, ctypes.byref(lt))
     return stypes.cVectorToPython(position), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spklef(filename):
     """
     Load an ephemeris file for use by the readers.  Return that file's
@@ -12126,11 +12632,12 @@ def spklef(filename):
     """
     filename = stypes.stringToCharP(filename)
     handle = ctypes.c_int()
-    libspice.spklef_c(_naif_context, filename, ctypes.byref(handle))
+    libspice.spklef_c(getNaifContext(), filename, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkltc(targ, et, ref, abcorr, stobs):
     """
     Return the state (position and velocity) of a target body
@@ -12163,12 +12670,13 @@ def spkltc(targ, et, ref, abcorr, stobs):
     starg = stypes.emptyDoubleVector(6)
     lt = ctypes.c_double()
     dlt = ctypes.c_double()
-    libspice.spkltc_c(_naif_context, targ, et, ref, abcorr, stobs, starg, ctypes.byref(lt),
+    libspice.spkltc_c(getNaifContext(), targ, et, ref, abcorr, stobs, starg, ctypes.byref(lt),
                       ctypes.byref(dlt))
     return stypes.cVectorToPython(starg), lt.value, dlt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkobj(spk, outCell=None):
     """
     Find the set of ID codes of all objects in a specified SPK file.
@@ -12185,11 +12693,12 @@ def spkobj(spk, outCell=None):
         outCell = stypes.SPICEINT_CELL(1000)
     assert isinstance(outCell, stypes.SpiceCell)
     assert outCell.dtype == 2
-    libspice.spkobj_c(_naif_context, spk, ctypes.byref(outCell))
+    libspice.spkobj_c(getNaifContext(), spk, ctypes.byref(outCell))
     return outCell
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkopa(filename):
     """
     Open an existing SPK file for subsequent write.
@@ -12203,11 +12712,12 @@ def spkopa(filename):
     """
     filename = stypes.stringToCharP(filename)
     handle = ctypes.c_int()
-    libspice.spkopa_c(_naif_context, filename, ctypes.byref(handle))
+    libspice.spkopa_c(getNaifContext(), filename, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkopn(filename, ifname, ncomch):
     """
     Create a new SPK file, returning the handle of the opened file.
@@ -12227,11 +12737,12 @@ def spkopn(filename, ifname, ncomch):
     ifname = stypes.stringToCharP(ifname)
     ncomch = ctypes.c_int(ncomch)
     handle = ctypes.c_int()
-    libspice.spkopn_c(_naif_context, filename, ifname, ncomch, ctypes.byref(handle))
+    libspice.spkopn_c(getNaifContext(), filename, ifname, ncomch, ctypes.byref(handle))
     return handle.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkpds(body, center, framestr, typenum, first, last):
     """
     Perform routine error checks and if all check pass, pack the
@@ -12261,11 +12772,12 @@ def spkpds(body, center, framestr, typenum, first, last):
     first = ctypes.c_double(first)
     last = ctypes.c_double(last)
     descr = stypes.emptyDoubleVector(5)
-    libspice.spkpds_c(_naif_context, body, center, framestr, typenum, first, last, descr)
+    libspice.spkpds_c(getNaifContext(), body, center, framestr, typenum, first, last, descr)
     return stypes.cVectorToPython(descr)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkpos(targ, et, ref, abcorr, obs):
     """
     Return the position of a target body relative to an observing
@@ -12299,17 +12811,18 @@ def spkpos(targ, et, ref, abcorr, obs):
         ptargs = []
         lts    = []
         for t in et:
-            libspice.spkpos_c(_naif_context, targ, t, ref, abcorr, obs, ptarg, ctypes.byref(lt))
+            libspice.spkpos_c(getNaifContext(), targ, t, ref, abcorr, obs, ptarg, ctypes.byref(lt))
             checkForSpiceError(None)
             ptargs.append(stypes.cVectorToPython(ptarg))
             lts.append(lt.value)
         return ptargs, lts
     else:
-        libspice.spkpos_c(_naif_context, targ, et, ref, abcorr, obs, ptarg, ctypes.byref(lt))
+        libspice.spkpos_c(getNaifContext(), targ, et, ref, abcorr, obs, ptarg, ctypes.byref(lt))
         return stypes.cVectorToPython(ptarg), lt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkpvn(handle, descr, et):
     """
     For a specified SPK segment and time, return the state (position and
@@ -12336,13 +12849,14 @@ def spkpvn(handle, descr, et):
     ref = ctypes.c_int()
     state = stypes.emptyDoubleVector(6)
     center = ctypes.c_int()
-    libspice.spkpvn_c(_naif_context, handle, descr, et, ctypes.byref(ref), state,
+    libspice.spkpvn_c(getNaifContext(), handle, descr, et, ctypes.byref(ref), state,
                       ctypes.byref(center))
     return ref.value, stypes.cVectorToPython(state), center.value
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def spksfs(body, et, idlen):
     # spksfs has a Parameter SIDLEN,
     # sounds like an optional but is that possible?
@@ -12371,13 +12885,14 @@ def spksfs(body, et, idlen):
     descr = stypes.emptyDoubleVector(5)
     identstring = stypes.stringToCharP(idlen)
     found = ctypes.c_int()
-    libspice.spksfs_c(_naif_context, body, et, idlen, ctypes.byref(handle), descr, identstring,
+    libspice.spksfs_c(getNaifContext(), body, et, idlen, ctypes.byref(handle), descr, identstring,
                       ctypes.byref(found))
     return handle.value, stypes.cVectorToPython(descr), \
            stypes.toPythonString(identstring), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkssb(targ, et, ref):
     """
     Return the state (position and velocity) of a target body
@@ -12398,11 +12913,12 @@ def spkssb(targ, et, ref):
     et = ctypes.c_double(et)
     ref = stypes.stringToCharP(ref)
     starg = stypes.emptyDoubleVector(6)
-    libspice.spkssb_c(_naif_context, targ, et, ref, starg)
+    libspice.spkssb_c(getNaifContext(), targ, et, ref, starg)
     return stypes.cVectorToPython(starg)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spksub(handle, descr, identin, begin, end, newh):
     """
     Extract a subset of the data in an SPK segment into a
@@ -12430,10 +12946,11 @@ def spksub(handle, descr, identin, begin, end, newh):
     begin = ctypes.c_double(begin)
     end = ctypes.c_double(end)
     newh = ctypes.c_int(newh)
-    libspice.spksub_c(_naif_context, handle, descr, identin, begin, end, newh)
+    libspice.spksub_c(getNaifContext(), handle, descr, identin, begin, end, newh)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkuds(descr):
     """
     Unpack the contents of an SPK segment descriptor.
@@ -12463,7 +12980,7 @@ def spkuds(descr):
     last = ctypes.c_double()
     begin = ctypes.c_int()
     end = ctypes.c_int()
-    libspice.spkuds_c(_naif_context, descr, ctypes.byref(body), ctypes.byref(center),
+    libspice.spkuds_c(getNaifContext(), descr, ctypes.byref(body), ctypes.byref(center),
                       ctypes.byref(framenum), ctypes.byref(typenum),
                       ctypes.byref(first), ctypes.byref(last),
                       ctypes.byref(begin), ctypes.byref(end))
@@ -12472,6 +12989,7 @@ def spkuds(descr):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkuef(handle):
     """
     Unload an ephemeris file so that it will no longer be searched by
@@ -12483,10 +13001,11 @@ def spkuef(handle):
     :type handle: int
     """
     handle = ctypes.c_int(handle)
-    libspice.spkuef_c(_naif_context, handle)
+    libspice.spkuef_c(getNaifContext(), handle)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw02(handle, body, center, inframe, first, last, segid, intlen, n, polydg,
            cdata, btime):
     """
@@ -12531,11 +13050,12 @@ def spkw02(handle, body, center, inframe, first, last, segid, intlen, n, polydg,
     polydg = ctypes.c_int(polydg)
     cdata = stypes.toDoubleVector(cdata)
     btime = ctypes.c_double(btime)
-    libspice.spkw02_c(_naif_context, handle, body, center, inframe, first, last, segid, intlen,
+    libspice.spkw02_c(getNaifContext(), handle, body, center, inframe, first, last, segid, intlen,
                       n, polydg, cdata, btime)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw03(handle, body, center, inframe, first, last, segid, intlen, n, polydg,
            cdata, btime):
     """
@@ -12580,11 +13100,12 @@ def spkw03(handle, body, center, inframe, first, last, segid, intlen, n, polydg,
     polydg = ctypes.c_int(polydg)
     cdata = stypes.toDoubleVector(cdata)
     btime = ctypes.c_double(btime)
-    libspice.spkw03_c(_naif_context, handle, body, center, inframe, first, last, segid, intlen,
+    libspice.spkw03_c(getNaifContext(), handle, body, center, inframe, first, last, segid, intlen,
                       n, polydg, cdata, btime)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw05(handle, body, center, inframe, first, last, segid, gm, n, states,
            epochs):
     # see libspice args for solution to array[][N] problem
@@ -12629,11 +13150,12 @@ def spkw05(handle, body, center, inframe, first, last, segid, gm, n, states,
     n = ctypes.c_int(n)
     states = stypes.toDoubleMatrix(states)
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spkw05_c(_naif_context, handle, body, center, inframe, first, last, segid, gm, n,
+    libspice.spkw05_c(getNaifContext(), handle, body, center, inframe, first, last, segid, gm, n,
                       states, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw08(handle, body, center, inframe, first, last, segid, degree, n, states,
            epoch1, step):
     # see libspice args for solution to array[][N] problem
@@ -12679,11 +13201,12 @@ def spkw08(handle, body, center, inframe, first, last, segid, degree, n, states,
     states = stypes.toDoubleMatrix(states)  # X by 6 array
     epoch1 = ctypes.c_double(epoch1)
     step = ctypes.c_double(step)
-    libspice.spkw08_c(_naif_context, handle, body, center, inframe, first, last, segid, degree,
+    libspice.spkw08_c(getNaifContext(), handle, body, center, inframe, first, last, segid, degree,
                       n, states, epoch1, step)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw09(handle, body, center, inframe, first, last, segid, degree, n, states,
            epochs):
     """
@@ -12725,11 +13248,12 @@ def spkw09(handle, body, center, inframe, first, last, segid, degree, n, states,
     n = ctypes.c_int(n)
     states = stypes.toDoubleMatrix(states)  # X by 6 array
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spkw09_c(_naif_context, handle, body, center, inframe, first, last, segid, degree,
+    libspice.spkw09_c(getNaifContext(), handle, body, center, inframe, first, last, segid, degree,
                       n, states, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw10(handle, body, center, inframe, first, last, segid, consts, n, elems,
            epochs):
     """
@@ -12772,11 +13296,12 @@ def spkw10(handle, body, center, inframe, first, last, segid, consts, n, elems,
     n = ctypes.c_int(n)
     elems = stypes.toDoubleVector(elems)
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spkw10_c(_naif_context, handle, body, center, inframe, first, last, segid, consts,
+    libspice.spkw10_c(getNaifContext(), handle, body, center, inframe, first, last, segid, consts,
                       n, elems, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw12(handle, body, center, inframe, first, last, segid, degree, n, states,
            epoch0, step):
     """
@@ -12821,11 +13346,12 @@ def spkw12(handle, body, center, inframe, first, last, segid, degree, n, states,
     states = stypes.toDoubleMatrix(states)  # X by 6 array
     epoch0 = ctypes.c_double(epoch0)
     step = ctypes.c_double(step)
-    libspice.spkw12_c(_naif_context, handle, body, center, inframe, first, last, segid, degree,
+    libspice.spkw12_c(getNaifContext(), handle, body, center, inframe, first, last, segid, degree,
                       n, states, epoch0, step)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw13(handle, body, center, inframe, first, last, segid, degree, n, states,
            epochs):
     """
@@ -12867,11 +13393,12 @@ def spkw13(handle, body, center, inframe, first, last, segid, degree, n, states,
     n = ctypes.c_int(n)
     states = stypes.toDoubleMatrix(states)  # X by 6 array
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spkw13_c(_naif_context, handle, body, center, inframe, first, last, segid, degree,
+    libspice.spkw13_c(getNaifContext(), handle, body, center, inframe, first, last, segid, degree,
                       n, states, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw15(handle, body, center, inframe, first, last, segid, epoch, tp, pa, p,
            ecc, j2flg, pv, gm, j2, radius):
     """
@@ -12931,11 +13458,12 @@ def spkw15(handle, body, center, inframe, first, last, segid, epoch, tp, pa, p,
     gm = ctypes.c_double(gm)
     j2 = ctypes.c_double(j2)
     radius = ctypes.c_double(radius)
-    libspice.spkw15_c(_naif_context, handle, body, center, inframe, first, last, segid, epoch,
+    libspice.spkw15_c(getNaifContext(), handle, body, center, inframe, first, last, segid, epoch,
                       tp, pa, p, ecc, j2flg, pv, gm, j2, radius)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw17(handle, body, center, inframe, first, last, segid, epoch, eqel,
            rapol, decpol):
     """
@@ -12977,11 +13505,12 @@ def spkw17(handle, body, center, inframe, first, last, segid, epoch, eqel,
     eqel = stypes.toDoubleVector(eqel)
     rapol = ctypes.c_double(rapol)
     decpol = ctypes.c_double(decpol)
-    libspice.spkw17_c(_naif_context, handle, body, center, inframe, first, last, segid, epoch,
+    libspice.spkw17_c(getNaifContext(), handle, body, center, inframe, first, last, segid, epoch,
                       eqel, rapol, decpol)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw18(handle, subtyp, body, center, inframe, first, last, segid, degree, packts, epochs):
     """
     Write a type 18 segment to an SPK file.
@@ -13023,10 +13552,11 @@ def spkw18(handle, subtyp, body, center, inframe, first, last, segid, degree, pa
     n = ctypes.c_int(len(packts))
     packts = stypes.toDoubleMatrix(packts)
     epochs = stypes.toDoubleVector(epochs)
-    libspice.spkw18_c(_naif_context, handle, subtyp, body, center, inframe, first, last, segid, degree, n, packts, epochs)
+    libspice.spkw18_c(getNaifContext(), handle, subtyp, body, center, inframe, first, last, segid, degree, n, packts, epochs)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def spkw20(handle, body, center, inframe, first, last, segid, intlen, n, polydg, cdata, dscale, tscale, initjd, initfr):
     """
     Write a type 20 segment to an SPK file.
@@ -13071,11 +13601,12 @@ def spkw20(handle, body, center, inframe, first, last, segid, intlen, n, polydg,
     tscale  = ctypes.c_double(tscale)
     initjd  = ctypes.c_double(initjd)
     initfr  = ctypes.c_double(initfr)
-    libspice.spkw20_c(_naif_context, handle, body, center, inframe, first, last, segid, intlen, n, polydg, cdata, dscale, tscale, initjd, initfr)
+    libspice.spkw20_c(getNaifContext(), handle, body, center, inframe, first, last, segid, intlen, n, polydg, cdata, dscale, tscale, initjd, initfr)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def srfc2s(code, bodyid, srflen=_default_len_out):
     """
     Translate a surface ID code, together with a body ID code, to the 
@@ -13100,12 +13631,13 @@ def srfc2s(code, bodyid, srflen=_default_len_out):
     srfstr = stypes.stringToCharP(srflen)
     srflen = ctypes.c_int(srflen)
     isname = ctypes.c_int()
-    libspice.srfc2s_c(_naif_context, code, bodyid, srflen, srfstr, ctypes.byref(isname))
+    libspice.srfc2s_c(getNaifContext(), code, bodyid, srflen, srfstr, ctypes.byref(isname))
     return stypes.toPythonString(srfstr), bool(isname.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def srfcss(code, bodstr, srflen=_default_len_out):
     """
     Translate a surface ID code, together with a body string, to the 
@@ -13128,11 +13660,12 @@ def srfcss(code, bodstr, srflen=_default_len_out):
     srfstr = stypes.stringToCharP(srflen)
     srflen = ctypes.c_int(srflen)
     isname = ctypes.c_int()
-    libspice.srfcss_c(_naif_context, code, bodstr, srflen, srfstr, ctypes.byref(isname))
+    libspice.srfcss_c(getNaifContext(), code, bodstr, srflen, srfstr, ctypes.byref(isname))
     return stypes.toPythonString(srfstr), bool(isname.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def srfnrm(method, target, et, fixref, srfpts):
     """
     Map array of surface points on a specified target body to 
@@ -13163,11 +13696,12 @@ def srfnrm(method, target, et, fixref, srfpts):
     npts   = ctypes.c_int(len(srfpts))
     srfpts = stypes.toDoubleMatrix(srfpts)
     normls = stypes.emptyDoubleMatrix(3, npts.value)
-    libspice.srfnrm_c(_naif_context, method, target, et, fixref, npts, srfpts, normls)
+    libspice.srfnrm_c(getNaifContext(), method, target, et, fixref, npts, srfpts, normls)
     return stypes.cMatrixToNumpy(normls)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def srfrec(body, longitude, latitude):
     """
     Convert planetocentric latitude and longitude of a surface
@@ -13188,12 +13722,13 @@ def srfrec(body, longitude, latitude):
     longitude = ctypes.c_double(longitude)
     latitude = ctypes.c_double(latitude)
     rectan = stypes.emptyDoubleVector(3)
-    libspice.srfrec_c(_naif_context, body, longitude, latitude, rectan)
+    libspice.srfrec_c(getNaifContext(), body, longitude, latitude, rectan)
     return stypes.cVectorToPython(rectan)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def srfs2c(srfstr, bodstr):
     """
     Translate a surface string, together with a body string, to the 
@@ -13213,12 +13748,13 @@ def srfs2c(srfstr, bodstr):
     bodstr = stypes.stringToCharP(bodstr)
     code   = ctypes.c_int()
     isname = ctypes.c_int()
-    libspice.srfs2c_c(_naif_context, srfstr, bodstr, ctypes.byref(code), ctypes.byref(isname))
+    libspice.srfs2c_c(getNaifContext(), srfstr, bodstr, ctypes.byref(code), ctypes.byref(isname))
     return code.value, bool(isname.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def srfscc(srfstr, bodyid):
     """
     Translate a surface string, together with a body ID code, to the 
@@ -13238,12 +13774,13 @@ def srfscc(srfstr, bodyid):
     bodyid = ctypes.c_int(bodyid)
     code = ctypes.c_int()
     isname = ctypes.c_int()
-    libspice.srfscc_c(_naif_context, srfstr, bodyid, ctypes.byref(code), ctypes.byref(isname))
+    libspice.srfscc_c(getNaifContext(), srfstr, bodyid, ctypes.byref(code), ctypes.byref(isname))
     return code.value, bool(isname.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def srfxpt(method, target, et, abcorr, obsrvr, dref, dvec):
     """
     Deprecated: This routine has been superseded by the CSPICE
@@ -13295,7 +13832,7 @@ def srfxpt(method, target, et, abcorr, obsrvr, dref, dvec):
         obsposs = []
         founds = []
         for t in et:
-            libspice.srfxpt_c(_naif_context, method, target, t, abcorr, obsrvr, dref, dvec,
+            libspice.srfxpt_c(getNaifContext(), method, target, t, abcorr, obsrvr, dref, dvec,
                               spoint, ctypes.byref(dist), ctypes.byref(trgepc),
                               obspos, ctypes.byref(found))
             checkForSpiceError(None)
@@ -13307,12 +13844,13 @@ def srfxpt(method, target, et, abcorr, obsrvr, dref, dvec):
         return spoints, dists, trgepcs, obsposs, founds
     else:
         et = ctypes.c_double(et)
-        libspice.srfxpt_c(_naif_context, method, target, et, abcorr, obsrvr, dref, dvec, spoint,
+        libspice.srfxpt_c(getNaifContext(), method, target, et, abcorr, obsrvr, dref, dvec, spoint,
                           ctypes.byref(dist), ctypes.byref(trgepc), obspos, ctypes.byref(found))
         return stypes.cVectorToPython(spoint), dist.value, trgepc.value, stypes.cVectorToPython(obspos), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ssize(newsize, cell):
     """
     Set the size (maximum cardinality) of a CSPICE cell of any data type.
@@ -13328,11 +13866,12 @@ def ssize(newsize, cell):
     """
     assert isinstance(cell, stypes.SpiceCell)
     newsize = ctypes.c_int(newsize)
-    libspice.ssize_c(_naif_context, newsize, ctypes.byref(cell))
+    libspice.ssize_c(getNaifContext(), newsize, ctypes.byref(cell))
     return cell
 
 
 @spiceErrorCheck
+@assertNaifContext
 def stelab(pobj, vobs):
     """
     Correct the apparent position of an object for stellar
@@ -13354,12 +13893,13 @@ def stelab(pobj, vobs):
     pobj = stypes.toDoubleVector(pobj)
     vobs = stypes.toDoubleVector(vobs)
     appobj = stypes.emptyDoubleVector(3)
-    libspice.stelab_c(_naif_context, pobj, vobs, appobj)
+    libspice.stelab_c(getNaifContext(), pobj, vobs, appobj)
     return stypes.cVectorToPython(appobj)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def stpool(item, nth, contin, lenout=_default_len_out):
     """
     Retrieve the nth string from the kernel pool variable, where the
@@ -13388,12 +13928,13 @@ def stpool(item, nth, contin, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     found = ctypes.c_int()
     sizet = ctypes.c_int()
-    libspice.stpool_c(_naif_context, item, nth, contin, lenout, strout, ctypes.byref(sizet),
+    libspice.stpool_c(getNaifContext(), item, nth, contin, lenout, strout, ctypes.byref(sizet),
                       ctypes.byref(found))
     return stypes.toPythonString(strout), sizet.value, bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def str2et(time):
     """
     Convert a string representing an epoch to a double precision
@@ -13411,10 +13952,11 @@ def str2et(time):
         return numpy.array([str2et(t) for t in time])
     time = stypes.stringToCharP(time)
     et = ctypes.c_double()
-    libspice.str2et_c(_naif_context, time, ctypes.byref(et))
+    libspice.str2et_c(getNaifContext(), time, ctypes.byref(et))
     return et.value
 
 @spiceErrorCheck
+@assertNaifContext
 def datetime2et(dt):
     """
     Converts a standard Python datetime to a double precision value 
@@ -13432,16 +13974,17 @@ def datetime2et(dt):
     if hasattr(dt, "__iter__"):
         ets    = []
         for t in dt:
-            libspice.utc2et_c(_naif_context, stypes.stringToCharP(t.isoformat()),ctypes.byref(lt))
+            libspice.utc2et_c(getNaifContext(), stypes.stringToCharP(t.isoformat()),ctypes.byref(lt))
             checkForSpiceError(None)
             ets.append(lt.value)
         return ets
     dt = stypes.stringToCharP(dt.isoformat())
     et = ctypes.c_double()
-    libspice.utc2et_c(_naif_context, dt, ctypes.byref(et))
+    libspice.utc2et_c(getNaifContext(), dt, ctypes.byref(et))
     return et.value
 
 @spiceErrorCheck
+@assertNaifContext
 def subpnt(method, target, et, fixref, abcorr, obsrvr):
     """
     Compute the rectangular coordinates of the sub-observer point on
@@ -13479,13 +14022,14 @@ def subpnt(method, target, et, fixref, abcorr, obsrvr):
     spoint = stypes.emptyDoubleVector(3)
     trgepc = ctypes.c_double(0)
     srfvec = stypes.emptyDoubleVector(3)
-    libspice.subpnt_c(_naif_context, method, target, et, fixref, abcorr, obsrvr, spoint,
+    libspice.subpnt_c(getNaifContext(), method, target, et, fixref, abcorr, obsrvr, spoint,
                       ctypes.byref(trgepc), srfvec)
     return stypes.cVectorToPython(spoint), trgepc.value, stypes.cVectorToPython(
             srfvec)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def subpt(method, target, et, abcorr, obsrvr):
     """
     Deprecated: This routine has been superseded by the CSPICE
@@ -13526,18 +14070,19 @@ def subpt(method, target, et, abcorr, obsrvr):
         points = []
         alts = []
         for t in et:
-            libspice.subpt_c(_naif_context, method, target, ctypes.c_double(t), abcorr, obsrvr, spoint, ctypes.byref(alt))
+            libspice.subpt_c(getNaifContext(), method, target, ctypes.c_double(t), abcorr, obsrvr, spoint, ctypes.byref(alt))
             checkForSpiceError(None)
             points.append(stypes.cVectorToPython(spoint))
             alts.append(alt.value)
         return points, alts
     else:
         et = ctypes.c_double(et)
-        libspice.subpt_c(_naif_context, method, target, et, abcorr, obsrvr, spoint, ctypes.byref(alt))
+        libspice.subpt_c(getNaifContext(), method, target, et, abcorr, obsrvr, spoint, ctypes.byref(alt))
         return stypes.cVectorToPython(spoint), alt.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def subslr(method, target, et, fixref, abcorr, obsrvr):
     """
     Compute the rectangular coordinates of the sub-solar point on
@@ -13575,13 +14120,14 @@ def subslr(method, target, et, fixref, abcorr, obsrvr):
     spoint = stypes.emptyDoubleVector(3)
     trgepc = ctypes.c_double(0)
     srfvec = stypes.emptyDoubleVector(3)
-    libspice.subslr_c(_naif_context, method, target, et, fixref, abcorr, obsrvr, spoint,
+    libspice.subslr_c(getNaifContext(), method, target, et, fixref, abcorr, obsrvr, spoint,
                       ctypes.byref(trgepc), srfvec)
     return stypes.cVectorToPython(spoint), trgepc.value, stypes.cVectorToPython(
             srfvec)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def subsol(method, target, et, abcorr, obsrvr):
     """
     Deprecated: This routine has been superseded by the CSPICE
@@ -13614,11 +14160,12 @@ def subsol(method, target, et, abcorr, obsrvr):
     abcorr = stypes.stringToCharP(abcorr)
     obsrvr = stypes.stringToCharP(obsrvr)
     spoint = stypes.emptyDoubleVector(3)
-    libspice.subsol_c(_naif_context, method, target, et, abcorr, obsrvr, spoint)
+    libspice.subsol_c(getNaifContext(), method, target, et, abcorr, obsrvr, spoint)
     return stypes.cVectorToPython(spoint)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sumad(array):
     """
     Return the sum of the elements of a double precision array.
@@ -13632,10 +14179,11 @@ def sumad(array):
     """
     n = ctypes.c_int(len(array))
     array = stypes.toDoubleVector(array)
-    return libspice.sumad_c(_naif_context, array, n)
+    return libspice.sumad_c(getNaifContext(), array, n)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sumai(array):
     """
     Return the sum of the elements of an integer array.
@@ -13649,10 +14197,11 @@ def sumai(array):
     """
     n = ctypes.c_int(len(array))
     array = stypes.toIntVector(array)
-    return libspice.sumai_c(_naif_context, array, n)
+    return libspice.sumai_c(getNaifContext(), array, n)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def surfnm(a, b, c, point):
     """
     This routine computes the outward-pointing, unit normal vector
@@ -13676,12 +14225,13 @@ def surfnm(a, b, c, point):
     c = ctypes.c_double(c)
     point = stypes.toDoubleVector(point)
     normal = stypes.emptyDoubleVector(3)
-    libspice.surfnm_c(_naif_context, a, b, c, point, normal)
+    libspice.surfnm_c(getNaifContext(), a, b, c, point, normal)
     return stypes.cVectorToPython(normal)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def surfpt(positn, u, a, b, c):
     """
     Determine the intersection of a line-of-sight vector with the
@@ -13709,12 +14259,13 @@ def surfpt(positn, u, a, b, c):
     u = stypes.toDoubleVector(u)
     point = stypes.emptyDoubleVector(3)
     found = ctypes.c_int()
-    libspice.surfpt_c(_naif_context, positn, u, a, b, c, point, ctypes.byref(found))
+    libspice.surfpt_c(getNaifContext(), positn, u, a, b, c, point, ctypes.byref(found))
     return stypes.cVectorToPython(point), bool(found.value)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def surfpv(stvrtx, stdir, a, b, c):
     """
     Find the state (position and velocity) of the surface intercept
@@ -13742,11 +14293,12 @@ def surfpv(stvrtx, stdir, a, b, c):
     stdir = stypes.toDoubleVector(stdir)
     stx = stypes.emptyDoubleVector(6)
     found = ctypes.c_int()
-    libspice.surfpv_c(_naif_context, stvrtx, stdir, a, b, c, stx, ctypes.byref(found))
+    libspice.surfpv_c(getNaifContext(), stvrtx, stdir, a, b, c, stx, ctypes.byref(found))
     return stypes.cVectorToPython(stx), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def swpool(agent, nnames, lenvals, names):
     """
     Add a name to the list of agents to notify whenever a member of
@@ -13767,10 +14319,11 @@ def swpool(agent, nnames, lenvals, names):
     nnames = ctypes.c_int(nnames)
     lenvals = ctypes.c_int(lenvals)
     names = stypes.listToCharArray(names)
-    libspice.swpool_c(_naif_context, agent, nnames, lenvals, names)
+    libspice.swpool_c(getNaifContext(), agent, nnames, lenvals, names)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def sxform(instring, tostring, et):
     """
     Return the state transformation matrix from one frame to
@@ -13794,18 +14347,19 @@ def sxform(instring, tostring, et):
     if hasattr(et, "__iter__"):
         xforms = []
         for t in et:
-            libspice.sxform_c(_naif_context, instring, tostring, ctypes.c_double(t), xform)
+            libspice.sxform_c(getNaifContext(), instring, tostring, ctypes.c_double(t), xform)
             checkForSpiceError(None)
             xforms.append(stypes.cMatrixToNumpy(xform))
         return xforms
     else:
         et = ctypes.c_double(et)
-        libspice.sxform_c(_naif_context, instring, tostring, et, xform)
+        libspice.sxform_c(getNaifContext(), instring, tostring, et, xform)
         return stypes.cMatrixToNumpy(xform)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def szpool(name):
     """
     Return the kernel pool size limitations.
@@ -13820,7 +14374,7 @@ def szpool(name):
     name = stypes.stringToCharP(name)
     n = ctypes.c_int()
     found = ctypes.c_int(0)
-    libspice.szpool_c(_naif_context, name, ctypes.byref(n), ctypes.byref(found))
+    libspice.szpool_c(getNaifContext(), name, ctypes.byref(n), ctypes.byref(found))
     return n.value, bool(found.value)
 
 
@@ -13829,6 +14383,7 @@ def szpool(name):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def termpt(method, ilusrc, target, et, fixref, abcorr, corloc, obsrvr, refvec, rolstp,
            ncuts, schstp, soltol, maxn):
     """
@@ -13897,7 +14452,7 @@ def termpt(method, ilusrc, target, et, fixref, abcorr, corloc, obsrvr, refvec, r
     points = stypes.emptyDoubleMatrix(3, maxn.value)
     epochs = stypes.emptyDoubleVector(maxn)
     trmvcs = stypes.emptyDoubleMatrix(3, maxn.value)
-    libspice.termpt_c(_naif_context, method, ilusrc, target, et, fixref,
+    libspice.termpt_c(getNaifContext(), method, ilusrc, target, et, fixref,
                       abcorr, corloc, obsrvr, refvec,
                       rolstp, ncuts, schstp, soltol,
                       maxn, npts, points, epochs, trmvcs)
@@ -13910,6 +14465,7 @@ def termpt(method, ilusrc, target, et, fixref, abcorr, corloc, obsrvr, refvec, r
 
 
 @spiceErrorCheck
+@assertNaifContext
 def timdef(action, item, lenout, value=None):
     """
     Set and retrieve the defaults associated with calendar input strings.
@@ -13934,11 +14490,12 @@ def timdef(action, item, lenout, value=None):
         value = stypes.stringToCharP(lenout)
     else:
         value = stypes.stringToCharP(value)
-    libspice.timdef_c(_naif_context, action, item, lenout, value)
+    libspice.timdef_c(getNaifContext(), action, item, lenout, value)
     return stypes.toPythonString(value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def timout(et, pictur, lenout=_default_len_out):
     """
     This vectorized routine converts an input epoch represented in TDB seconds
@@ -13962,17 +14519,18 @@ def timout(et, pictur, lenout=_default_len_out):
     if hasattr(et, "__iter__"):
         times = []
         for t in et:
-            libspice.timout_c(_naif_context, ctypes.c_double(t), pictur, lenout, output)
+            libspice.timout_c(getNaifContext(), ctypes.c_double(t), pictur, lenout, output)
             checkForSpiceError(None)
             times.append(stypes.toPythonString(output))
         return times
     else:
         et = ctypes.c_double(et)
-        libspice.timout_c(_naif_context, et, pictur, lenout, output)
+        libspice.timout_c(getNaifContext(), et, pictur, lenout, output)
         return stypes.toPythonString(output)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tipbod(ref, body, et):
     """
     Return a 3x3 matrix that transforms positions in inertial
@@ -13994,11 +14552,12 @@ def tipbod(ref, body, et):
     body = ctypes.c_int(body)
     et = ctypes.c_double(et)
     retmatrix = stypes.emptyDoubleMatrix()
-    libspice.tipbod_c(_naif_context, ref, body, et, retmatrix)
+    libspice.tipbod_c(getNaifContext(), ref, body, et, retmatrix)
     return stypes.cMatrixToNumpy(retmatrix)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tisbod(ref, body, et):
     """
     Return a 6x6 matrix that transforms states in inertial coordinates to
@@ -14019,11 +14578,12 @@ def tisbod(ref, body, et):
     body = ctypes.c_int(body)
     et = ctypes.c_double(et)
     retmatrix = stypes.emptyDoubleMatrix(x=6, y=6)
-    libspice.tisbod_c(_naif_context, ref, body, et, retmatrix)
+    libspice.tisbod_c(getNaifContext(), ref, body, et, retmatrix)
     return stypes.cMatrixToNumpy(retmatrix)
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def tkfram(typid):
     """
     This routine returns the rotation from the input frame
@@ -14040,11 +14600,12 @@ def tkfram(typid):
     matrix = stypes.emptyDoubleMatrix(x=3, y=3)
     nextFrame = ctypes.c_int()
     found = ctypes.c_int()
-    libspice.tkfram_(_naif_context, ctypes.byref(code), matrix, ctypes.byref(nextFrame), ctypes.byref(found))
+    libspice.tkfram_(getNaifContext(), ctypes.byref(code), matrix, ctypes.byref(nextFrame), ctypes.byref(found))
 
     return stypes.cMatrixToNumpy(matrix), nextFrame.value, bool(found.value)
 
 # @spiceErrorCheck
+@assertNaifContext
 def tkvrsn(item):
     """
     Given an item such as the Toolkit or an entry point name, return
@@ -14058,10 +14619,11 @@ def tkvrsn(item):
     :rtype: str
     """
     item = stypes.stringToCharP(item)
-    return stypes.toPythonString(libspice.tkvrsn_c(_naif_context, item))
+    return stypes.toPythonString(libspice.tkvrsn_c(getNaifContext(), item))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tparse(instring, lenout=_default_len_out):
     """
     Parse a time string and return seconds past the J2000
@@ -14080,11 +14642,12 @@ def tparse(instring, lenout=_default_len_out):
     lenout = ctypes.c_int(lenout)
     instring = stypes.stringToCharP(instring)
     sp2000 = ctypes.c_double()
-    libspice.tparse_c(_naif_context, instring, lenout, ctypes.byref(sp2000), errmsg)
+    libspice.tparse_c(getNaifContext(), instring, lenout, ctypes.byref(sp2000), errmsg)
     return sp2000.value, stypes.toPythonString(errmsg)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tpictr(sample, lenout=_default_len_out, lenerr=_default_len_out):
     """
     Given a sample time string, create a time format picture
@@ -14110,12 +14673,13 @@ def tpictr(sample, lenout=_default_len_out, lenerr=_default_len_out):
     lenout = ctypes.c_int(lenout)
     lenerr = ctypes.c_int(lenerr)
     ok = ctypes.c_int()
-    libspice.tpictr_c(_naif_context, sample, lenout, lenerr, pictur, ctypes.byref(ok), errmsg)
+    libspice.tpictr_c(getNaifContext(), sample, lenout, lenerr, pictur, ctypes.byref(ok), errmsg)
     return stypes.toPythonString(pictur), ok.value, stypes.toPythonString(
             errmsg)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def trace(matrix):
     """
     Return the trace of a 3x3 matrix.
@@ -14128,10 +14692,11 @@ def trace(matrix):
     :rtype: float
     """
     matrix = stypes.toDoubleMatrix(matrix)
-    return libspice.trace_c(_naif_context, matrix)
+    return libspice.trace_c(getNaifContext(), matrix)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def trcdep():
     """
     Return the number of modules in the traceback representation.
@@ -14142,11 +14707,12 @@ def trcdep():
     :rtype: int
     """
     depth = ctypes.c_int()
-    libspice.trcdep_c(_naif_context, ctypes.byref(depth))
+    libspice.trcdep_c(getNaifContext(), ctypes.byref(depth))
     return depth.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def trcnam(index, namlen=_default_len_out):
     """
     Return the name of the module having the specified position in
@@ -14165,11 +14731,12 @@ def trcnam(index, namlen=_default_len_out):
     index = ctypes.c_int(index)
     name = stypes.stringToCharP(namlen)
     namlen = ctypes.c_int(namlen)
-    libspice.trcnam_c(_naif_context, index, namlen, name)
+    libspice.trcnam_c(getNaifContext(), index, namlen, name)
     return stypes.toPythonString(name)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def trcoff():
     """
     Disable tracing.
@@ -14177,10 +14744,11 @@ def trcoff():
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/trcoff_c.html
 
     """
-    libspice.trcoff_c(_naif_context)
+    libspice.trcoff_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tsetyr(year):
     """
     Set the lower bound on the 100 year range.
@@ -14193,10 +14761,11 @@ def tsetyr(year):
     :type year: int
     """
     year = ctypes.c_int(year)
-    libspice.tsetyr_c(_naif_context, year)
+    libspice.tsetyr_c(getNaifContext(), year)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def twopi():
     """
     Return twice the value of pi
@@ -14207,10 +14776,11 @@ def twopi():
     :return: Twice the value of pi.
     :rtype: float
     """
-    return libspice.twopi_c(_naif_context)
+    return libspice.twopi_c(getNaifContext())
 
 
 @spiceErrorCheck
+@assertNaifContext
 def twovec(axdef, indexa, plndef, indexp):
     """
     Find the transformation to the right-handed frame having a
@@ -14235,11 +14805,12 @@ def twovec(axdef, indexa, plndef, indexp):
     plndef = stypes.toDoubleVector(plndef)
     indexp = ctypes.c_int(indexp)
     mout = stypes.emptyDoubleMatrix()
-    libspice.twovec_c(_naif_context, axdef, indexa, plndef, indexp, mout)
+    libspice.twovec_c(getNaifContext(), axdef, indexa, plndef, indexp, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def txtopn(fname):
     """
     Internal undocumented command for opening a new text file for
@@ -14256,11 +14827,12 @@ def txtopn(fname):
     fnameP    = stypes.stringToCharP(fname)
     unit_out  = ctypes.c_int()
     fname_len = ctypes.c_int(len(fname))
-    libspice.txtopn_(_naif_context, fnameP, ctypes.byref(unit_out), fname_len)
+    libspice.txtopn_(getNaifContext(), fnameP, ctypes.byref(unit_out), fname_len)
     return unit_out.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def tyear():
     """
     Return the number of seconds in a tropical year.
@@ -14270,13 +14842,14 @@ def tyear():
     :return: The number of seconds in a tropical year.
     :rtype: float
     """
-    return libspice.tyear_c(_naif_context)
+    return libspice.tyear_c(getNaifContext())
 
 
 ################################################################################
 # U
 
 @spiceErrorCheck
+@assertNaifContext
 def ucase(inchar, lenout=None):
     """
     Convert the characters in a string to uppercase.
@@ -14295,11 +14868,12 @@ def ucase(inchar, lenout=None):
     inchar = stypes.stringToCharP(inchar)
     outchar = stypes.stringToCharP(" " * lenout)
     lenout = ctypes.c_int(lenout)
-    libspice.ucase_c(_naif_context, inchar, lenout, outchar)
+    libspice.ucase_c(getNaifContext(), inchar, lenout, outchar)
     return stypes.toPythonString(outchar)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def ucrss(v1, v2):
     """
     Compute the normalized cross product of two 3-vectors.
@@ -14316,10 +14890,11 @@ def ucrss(v1, v2):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(3)
-    libspice.ucrss_c(_naif_context, v1, v2, vout)
+    libspice.ucrss_c(getNaifContext(), v1, v2, vout)
     return stypes.cVectorToPython(vout)
 
 
+@assertNaifContext
 def uddc(udfunc, x, dx):
     """
     SPICE private routine intended solely for the support of SPICE
@@ -14355,11 +14930,12 @@ def uddc(udfunc, x, dx):
     x = ctypes.c_double(x)
     dx = ctypes.c_double(dx)
     isdescr = ctypes.c_int()
-    libspice.uddc_c(_naif_context, udfunc, x, dx, ctypes.byref(isdescr))
+    libspice.uddc_c(getNaifContext(), udfunc, x, dx, ctypes.byref(isdescr))
     return bool(isdescr.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def uddf(udfunc, x, dx):
     """
     Routine to calculate the first derivative of a caller-specified
@@ -14390,10 +14966,11 @@ def uddf(udfunc, x, dx):
     x = ctypes.c_double(x)
     dx = ctypes.c_double(dx)
     deriv = ctypes.c_double()
-    libspice.uddf_c(_naif_context, udfunc, x, dx, ctypes.byref(deriv))
+    libspice.uddf_c(getNaifContext(), udfunc, x, dx, ctypes.byref(deriv))
     return deriv.value
 
 
+@assertNaifContext
 def udf(x):
     """
     No-op routine for with an argument signature matching udfuns.
@@ -14408,11 +14985,12 @@ def udf(x):
     """
     x = ctypes.c_double(x)
     value = ctypes.c_double()
-    libspice.udf_c(_naif_context, x, ctypes.byref(value))
+    libspice.udf_c(getNaifContext(), x, ctypes.byref(value))
     return value.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def union(a, b):
     """
     Compute the union of two sets of any data type to form a third set.
@@ -14439,11 +15017,12 @@ def union(a, b):
         c = stypes.SPICEINT_CELL(max(a.size, b.size))
     else:
         raise NotImplementedError
-    libspice.union_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.union_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def unitim(epoch, insys, outsys):
     """
     Transform time from one uniform scale to another.  The uniform
@@ -14465,10 +15044,11 @@ def unitim(epoch, insys, outsys):
     epoch = ctypes.c_double(epoch)
     insys = stypes.stringToCharP(insys)
     outsys = stypes.stringToCharP(outsys)
-    return libspice.unitim_c(_naif_context, epoch, insys, outsys)
+    return libspice.unitim_c(getNaifContext(), epoch, insys, outsys)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def unload(filename):
     """
     Unload a SPICE kernel.
@@ -14480,13 +15060,14 @@ def unload(filename):
     """
     if stypes.isiterable(filename):
         for f in filename:
-            libspice.unload_c(_naif_context, stypes.stringToCharP(f))
+            libspice.unload_c(getNaifContext(), stypes.stringToCharP(f))
         return
     filename = stypes.stringToCharP(filename)
-    libspice.unload_c(_naif_context, filename)
+    libspice.unload_c(getNaifContext(), filename)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def unorm(v1):
     """
     Normalize a double precision 3-vector and return its magnitude.
@@ -14501,11 +15082,12 @@ def unorm(v1):
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(3)
     vmag = ctypes.c_double()
-    libspice.unorm_c(_naif_context, v1, vout, ctypes.byref(vmag))
+    libspice.unorm_c(getNaifContext(), v1, vout, ctypes.byref(vmag))
     return stypes.cVectorToPython(vout), vmag.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def unormg(v1, ndim):
     """
     Normalize a double precision vector of arbitrary dimension and
@@ -14524,11 +15106,12 @@ def unormg(v1, ndim):
     vout = stypes.emptyDoubleVector(ndim)
     vmag = ctypes.c_double()
     ndim = ctypes.c_int(ndim)
-    libspice.unormg_c(_naif_context, v1, ndim, vout, ctypes.byref(vmag))
+    libspice.unormg_c(getNaifContext(), v1, ndim, vout, ctypes.byref(vmag))
     return stypes.cVectorToPython(vout), vmag.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def utc2et(utcstr):
     """
     Convert an input time from Calendar or Julian Date format, UTC,
@@ -14543,7 +15126,7 @@ def utc2et(utcstr):
     """
     utcstr = stypes.stringToCharP(utcstr)
     et = ctypes.c_double()
-    libspice.utc2et_c(_naif_context, utcstr, ctypes.byref(et))
+    libspice.utc2et_c(getNaifContext(), utcstr, ctypes.byref(et))
     return et.value
 
 
@@ -14552,6 +15135,7 @@ def utc2et(utcstr):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vadd(v1, v2):
     """ Add two 3 dimensional vectors.
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/vadd_c.html
@@ -14566,11 +15150,12 @@ def vadd(v1, v2):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vadd_c(_naif_context, v1, v2, vout)
+    libspice.vadd_c(getNaifContext(), v1, v2, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vaddg(v1, v2, ndim):
     """ Add two n-dimensional vectors
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/vaddg_c.html
@@ -14588,11 +15173,12 @@ def vaddg(v1, v2, ndim):
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vaddg_c(_naif_context, v1, v2, ndim, vout)
+    libspice.vaddg_c(getNaifContext(), v1, v2, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def valid(insize, n, inset):
     """
     Create a valid CSPICE set from a CSPICE Cell of any data type.
@@ -14610,11 +15196,12 @@ def valid(insize, n, inset):
     assert isinstance(inset, stypes.SpiceCell)
     insize = ctypes.c_int(insize)
     n = ctypes.c_int(n)
-    libspice.valid_c(_naif_context, insize, n, inset)
+    libspice.valid_c(getNaifContext(), insize, n, inset)
     return inset
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vcrss(v1, v2):
     """
     Compute the cross product of two 3-dimensional vectors.
@@ -14631,11 +15218,12 @@ def vcrss(v1, v2):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vcrss_c(_naif_context, v1, v2, vout)
+    libspice.vcrss_c(getNaifContext(), v1, v2, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vdist(v1, v2):
     """
     Return the distance between two three-dimensional vectors.
@@ -14651,10 +15239,11 @@ def vdist(v1, v2):
     """
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
-    return libspice.vdist_c(_naif_context, v1, v2)
+    return libspice.vdist_c(getNaifContext(), v1, v2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vdistg(v1, v2, ndim):
     """
     Return the distance between two vectors of arbitrary dimension.
@@ -14673,10 +15262,11 @@ def vdistg(v1, v2, ndim):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     ndim = ctypes.c_int(ndim)
-    return libspice.vdistg_c(_naif_context, v1, v2, ndim)
+    return libspice.vdistg_c(getNaifContext(), v1, v2, ndim)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vdot(v1, v2):
     """
     Compute the dot product of two double precision, 3-dimensional vectors.
@@ -14692,10 +15282,11 @@ def vdot(v1, v2):
     """
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
-    return libspice.vdot_c(_naif_context, v1, v2)
+    return libspice.vdot_c(getNaifContext(), v1, v2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vdotg(v1, v2, ndim):
     """
     Compute the dot product of two double precision vectors of
@@ -14715,10 +15306,11 @@ def vdotg(v1, v2, ndim):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     ndim = ctypes.c_int(ndim)
-    return libspice.vdotg_c(_naif_context, v1, v2, ndim)
+    return libspice.vdotg_c(getNaifContext(), v1, v2, ndim)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vequ(v1):
     """
     Make one double precision 3-dimensional vector equal to another.
@@ -14732,11 +15324,12 @@ def vequ(v1):
     """
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vequ_c(_naif_context, v1, vout)
+    libspice.vequ_c(getNaifContext(), v1, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vequg(v1, ndim):
     """
     Make one double precision vector of arbitrary dimension equal to another.
@@ -14753,11 +15346,12 @@ def vequg(v1, ndim):
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vequg_c(_naif_context, v1, ndim, vout)
+    libspice.vequg_c(getNaifContext(), v1, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vhat(v1):
     """
     Find the unit vector along a double precision 3-dimensional vector.
@@ -14771,11 +15365,12 @@ def vhat(v1):
     """
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vhat_c(_naif_context, v1, vout)
+    libspice.vhat_c(getNaifContext(), v1, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vhatg(v1, ndim):
     """
     Find the unit vector along a double precision vector of arbitrary dimension.
@@ -14792,11 +15387,12 @@ def vhatg(v1, ndim):
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vhatg_c(_naif_context, v1, ndim, vout)
+    libspice.vhatg_c(getNaifContext(), v1, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vlcom(a, v1, b, v2):
     """
     Compute a vector linear combination of two double precision,
@@ -14820,11 +15416,12 @@ def vlcom(a, v1, b, v2):
     sumv = stypes.emptyDoubleVector(3)
     a = ctypes.c_double(a)
     b = ctypes.c_double(b)
-    libspice.vlcom_c(_naif_context, a, v1, b, v2, sumv)
+    libspice.vlcom_c(getNaifContext(), a, v1, b, v2, sumv)
     return stypes.cVectorToPython(sumv)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vlcom3(a, v1, b, v2, c, v3):
     """
     This subroutine computes the vector linear combination
@@ -14854,11 +15451,12 @@ def vlcom3(a, v1, b, v2, c, v3):
     a = ctypes.c_double(a)
     b = ctypes.c_double(b)
     c = ctypes.c_double(c)
-    libspice.vlcom3_c(_naif_context, a, v1, b, v2, c, v3, sumv)
+    libspice.vlcom3_c(getNaifContext(), a, v1, b, v2, c, v3, sumv)
     return stypes.cVectorToPython(sumv)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vlcomg(n, a, v1, b, v2):
     """
     Compute a vector linear combination of two double precision
@@ -14885,11 +15483,12 @@ def vlcomg(n, a, v1, b, v2):
     a = ctypes.c_double(a)
     b = ctypes.c_double(b)
     n = ctypes.c_int(n)
-    libspice.vlcomg_c(_naif_context, n, a, v1, b, v2, sumv)
+    libspice.vlcomg_c(getNaifContext(), n, a, v1, b, v2, sumv)
     return stypes.cVectorToPython(sumv)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vminug(vin, ndim):
     """
     Negate a double precision vector of arbitrary dimension.
@@ -14906,11 +15505,12 @@ def vminug(vin, ndim):
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vminug_c(_naif_context, vin, ndim, vout)
+    libspice.vminug_c(getNaifContext(), vin, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vminus(vin):
     """
     Negate a double precision 3-dimensional vector.
@@ -14924,11 +15524,12 @@ def vminus(vin):
     """
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vminus_c(_naif_context, vin, vout)
+    libspice.vminus_c(getNaifContext(), vin, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vnorm(v):
     """
     Compute the magnitude of a double precision, 3-dimensional vector.
@@ -14941,10 +15542,11 @@ def vnorm(v):
     :rtype: float
     """
     v = stypes.toDoubleVector(v)
-    return libspice.vnorm_c(_naif_context, v)
+    return libspice.vnorm_c(getNaifContext(), v)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vnormg(v, ndim):
     """
     Compute the magnitude of a double precision vector of arbitrary dimension.
@@ -14960,10 +15562,11 @@ def vnormg(v, ndim):
     """
     v = stypes.toDoubleVector(v)
     ndim = ctypes.c_int(ndim)
-    return libspice.vnormg_c(_naif_context, v, ndim)
+    return libspice.vnormg_c(getNaifContext(), v, ndim)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vpack(x, y, z):
     """
     Pack three scalar components into a vector.
@@ -14983,11 +15586,12 @@ def vpack(x, y, z):
     y = ctypes.c_double(y)
     z = ctypes.c_double(z)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vpack_c(_naif_context, x, y, z, vout)
+    libspice.vpack_c(getNaifContext(), x, y, z, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vperp(a, b):
     """
     Find the component of a vector that is perpendicular to a second
@@ -15005,11 +15609,12 @@ def vperp(a, b):
     a = stypes.toDoubleVector(a)
     b = stypes.toDoubleVector(b)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vperp_c(_naif_context, a, b, vout)
+    libspice.vperp_c(getNaifContext(), a, b, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vprjp(vin, plane):
     """
     Project a vector onto a specified plane, orthogonally.
@@ -15025,12 +15630,13 @@ def vprjp(vin, plane):
     """
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vprjp_c(_naif_context, vin, ctypes.byref(plane), vout)
+    libspice.vprjp_c(getNaifContext(), vin, ctypes.byref(plane), vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
 @spiceFoundExceptionThrower
+@assertNaifContext
 def vprjpi(vin, projpl, invpl):
     """
     Find the vector in a specified plane that maps to a specified
@@ -15050,12 +15656,13 @@ def vprjpi(vin, projpl, invpl):
     vin = stypes.toDoubleVector(vin)
     vout = stypes.emptyDoubleVector(3)
     found = ctypes.c_int()
-    libspice.vprjpi_c(_naif_context, vin, ctypes.byref(projpl), ctypes.byref(invpl), vout,
+    libspice.vprjpi_c(getNaifContext(), vin, ctypes.byref(projpl), ctypes.byref(invpl), vout,
                       ctypes.byref(found))
     return stypes.cVectorToPython(vout), bool(found.value)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vproj(a, b):
     """
     Find the projection of one vector onto another vector.
@@ -15072,11 +15679,12 @@ def vproj(a, b):
     a = stypes.toDoubleVector(a)
     b = stypes.toDoubleVector(b)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vproj_c(_naif_context, a, b, vout)
+    libspice.vproj_c(getNaifContext(), a, b, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vrel(v1, v2):
     """
     Return the relative difference between two 3-dimensional vectors.
@@ -15092,10 +15700,11 @@ def vrel(v1, v2):
     """
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
-    return libspice.vrel_c(_naif_context, v1, v2)
+    return libspice.vrel_c(getNaifContext(), v1, v2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vrelg(v1, v2, ndim):
     """
     Return the relative difference between two vectors of general dimension.
@@ -15114,10 +15723,11 @@ def vrelg(v1, v2, ndim):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     ndim = ctypes.c_int(ndim)
-    return libspice.vrelg_c(_naif_context, v1, v2, ndim)
+    return libspice.vrelg_c(getNaifContext(), v1, v2, ndim)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vrotv(v, axis, theta):
     """
     Rotate a vector about a specified axis vector by a
@@ -15138,11 +15748,12 @@ def vrotv(v, axis, theta):
     axis = stypes.toDoubleVector(axis)
     theta = ctypes.c_double(theta)
     r = stypes.emptyDoubleVector(3)
-    libspice.vrotv_c(_naif_context, v, axis, theta, r)
+    libspice.vrotv_c(getNaifContext(), v, axis, theta, r)
     return stypes.cVectorToPython(r)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vscl(s, v1):
     """
     Multiply a scalar and a 3-dimensional double precision vector.
@@ -15159,11 +15770,12 @@ def vscl(s, v1):
     s = ctypes.c_double(s)
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vscl_c(_naif_context, s, v1, vout)
+    libspice.vscl_c(getNaifContext(), s, v1, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vsclg(s, v1, ndim):
     """
     Multiply a scalar and a double precision vector of arbitrary dimension.
@@ -15183,11 +15795,12 @@ def vsclg(s, v1, ndim):
     v1 = stypes.toDoubleVector(v1)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vsclg_c(_naif_context, s, v1, ndim, vout)
+    libspice.vsclg_c(getNaifContext(), s, v1, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vsep(v1, v2):
     """
     Find the separation angle in radians between two double
@@ -15205,10 +15818,11 @@ def vsep(v1, v2):
     """
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
-    return libspice.vsep_c(_naif_context, v1, v2)
+    return libspice.vsep_c(getNaifContext(), v1, v2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vsepg(v1, v2, ndim):
     """
     Find the separation angle in radians between two double
@@ -15229,10 +15843,11 @@ def vsepg(v1, v2, ndim):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     ndim = ctypes.c_int(ndim)
-    return libspice.vsepg_c(_naif_context, v1, v2, ndim)
+    return libspice.vsepg_c(getNaifContext(), v1, v2, ndim)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vsub(v1, v2):
     """
     Compute the difference between two 3-dimensional,
@@ -15250,11 +15865,12 @@ def vsub(v1, v2):
     v1 = stypes.toDoubleVector(v1)
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(3)
-    libspice.vsub_c(_naif_context, v1, v2, vout)
+    libspice.vsub_c(getNaifContext(), v1, v2, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vsubg(v1, v2, ndim):
     """
     Compute the difference between two double precision
@@ -15275,11 +15891,12 @@ def vsubg(v1, v2, ndim):
     v2 = stypes.toDoubleVector(v2)
     vout = stypes.emptyDoubleVector(ndim)
     ndim = ctypes.c_int(ndim)
-    libspice.vsubg_c(_naif_context, v1, v2, ndim, vout)
+    libspice.vsubg_c(getNaifContext(), v1, v2, ndim, vout)
     return stypes.cVectorToPython(vout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vtmv(v1, matrix, v2):
     """
     Multiply the transpose of a 3-dimensional column vector
@@ -15299,10 +15916,11 @@ def vtmv(v1, matrix, v2):
     v1 = stypes.toDoubleVector(v1)
     matrix = stypes.toDoubleMatrix(matrix)
     v2 = stypes.toDoubleVector(v2)
-    return libspice.vtmv_c(_naif_context, v1, matrix, v2)
+    return libspice.vtmv_c(getNaifContext(), v1, matrix, v2)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vtmvg(v1, matrix, v2, nrow, ncol):
     """
     Multiply the transpose of a n-dimensional
@@ -15329,10 +15947,11 @@ def vtmvg(v1, matrix, v2, nrow, ncol):
     v2 = stypes.toDoubleVector(v2)
     nrow = ctypes.c_int(nrow)
     ncol = ctypes.c_int(ncol)
-    return libspice.vtmvg_c(_naif_context, v1, matrix, v2, nrow, ncol)
+    return libspice.vtmvg_c(getNaifContext(), v1, matrix, v2, nrow, ncol)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vupack(v):
     """
     Unpack three scalar components from a vector.
@@ -15348,11 +15967,12 @@ def vupack(v):
     x = ctypes.c_double()
     y = ctypes.c_double()
     z = ctypes.c_double()
-    libspice.vupack_c(_naif_context, v1, ctypes.byref(x), ctypes.byref(y), ctypes.byref(z))
+    libspice.vupack_c(getNaifContext(), v1, ctypes.byref(x), ctypes.byref(y), ctypes.byref(z))
     return x.value, y.value, z.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vzero(v):
     """
     Indicate whether a 3-vector is the zero vector.
@@ -15365,10 +15985,11 @@ def vzero(v):
     :rtype: bool
     """
     v = stypes.toDoubleVector(v)
-    return bool(libspice.vzero_c(_naif_context, v))
+    return bool(libspice.vzero_c(getNaifContext(), v))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def vzerog(v, ndim):
     """
     Indicate whether a general-dimensional vector is the zero vector.
@@ -15384,7 +16005,7 @@ def vzerog(v, ndim):
     """
     v = stypes.toDoubleVector(v)
     ndim = ctypes.c_int(ndim)
-    return bool(libspice.vzerog_c(_naif_context, v, ndim))
+    return bool(libspice.vzerog_c(getNaifContext(), v, ndim))
 
 
 ################################################################################
@@ -15392,6 +16013,7 @@ def vzerog(v, ndim):
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wncard(window):
     """
     Return the cardinality (number of intervals) of a double
@@ -15405,10 +16027,11 @@ def wncard(window):
     :rtype: int
     """
     assert isinstance(window, stypes.SpiceCell)
-    return libspice.wncard_c(_naif_context, window)
+    return libspice.wncard_c(getNaifContext(), window)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wncomd(left, right, window):
     """
     Determine the complement of a double precision window with
@@ -15430,11 +16053,12 @@ def wncomd(left, right, window):
     left = ctypes.c_double(left)
     right = ctypes.c_double(right)
     result = stypes.SpiceCell.double(window.size)
-    libspice.wncomd_c(_naif_context, left, right, ctypes.byref(window), result)
+    libspice.wncomd_c(getNaifContext(), left, right, ctypes.byref(window), result)
     return result
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wncond(left, right, window):
     """
     Contract each of the intervals of a double precision window.
@@ -15454,11 +16078,12 @@ def wncond(left, right, window):
     assert window.dtype == 1
     left = ctypes.c_double(left)
     right = ctypes.c_double(right)
-    libspice.wncond_c(_naif_context, left, right, ctypes.byref(window))
+    libspice.wncond_c(getNaifContext(), left, right, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wndifd(a, b):
     """
     Place the difference of two double precision windows into
@@ -15478,11 +16103,12 @@ def wndifd(a, b):
     assert a.dtype == 1
     assert b.dtype == 1
     c = stypes.SpiceCell.double(a.size + b.size)
-    libspice.wndifd_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.wndifd_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnelmd(point, window):
     """
     Determine whether a point is an element of a double precision
@@ -15500,10 +16126,11 @@ def wnelmd(point, window):
     assert isinstance(window, stypes.SpiceCell)
     assert window.dtype == 1
     point = ctypes.c_double(point)
-    return bool(libspice.wnelmd_c(_naif_context, point, ctypes.byref(window)))
+    return bool(libspice.wnelmd_c(getNaifContext(), point, ctypes.byref(window)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnexpd(left, right, window):
     """
     Expand each of the intervals of a double precision window.
@@ -15523,11 +16150,12 @@ def wnexpd(left, right, window):
     assert window.dtype == 1
     left = ctypes.c_double(left)
     right = ctypes.c_double(right)
-    libspice.wnexpd_c(_naif_context, left, right, ctypes.byref(window))
+    libspice.wnexpd_c(getNaifContext(), left, right, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnextd(side, window):
     """
     Extract the left or right endpoints from a double precision
@@ -15546,11 +16174,12 @@ def wnextd(side, window):
     assert window.dtype == 1
     assert side == 'L' or side == 'R'
     side = ctypes.c_char(side.encode(encoding='UTF-8'))
-    libspice.wnextd_c(_naif_context, side, ctypes.byref(window))
+    libspice.wnextd_c(getNaifContext(), side, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnfetd(window, n):
     """
     Fetch a particular interval from a double precision window.
@@ -15569,12 +16198,13 @@ def wnfetd(window, n):
     n = ctypes.c_int(n)
     left = ctypes.c_double()
     right = ctypes.c_double()
-    libspice.wnfetd_c(_naif_context, ctypes.byref(window), n, ctypes.byref(left),
+    libspice.wnfetd_c(getNaifContext(), ctypes.byref(window), n, ctypes.byref(left),
                       ctypes.byref(right))
     return left.value, right.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnfild(small, window):
     """
     Fill small gaps between adjacent intervals of a double precision window.
@@ -15591,11 +16221,12 @@ def wnfild(small, window):
     assert isinstance(window, stypes.SpiceCell)
     assert window.dtype == 1
     small = ctypes.c_double(small)
-    libspice.wnfild_c(_naif_context, small, ctypes.byref(window))
+    libspice.wnfild_c(getNaifContext(), small, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnfltd(small, window):
     """
     Filter (remove) small intervals from a double precision window.
@@ -15612,11 +16243,12 @@ def wnfltd(small, window):
     assert isinstance(window, stypes.SpiceCell)
     assert window.dtype == 1
     small = ctypes.c_double(small)
-    libspice.wnfltd_c(_naif_context, small, ctypes.byref(window))
+    libspice.wnfltd_c(getNaifContext(), small, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnincd(left, right, window):
     """
     Determine whether an interval is included in a double precision window.
@@ -15636,10 +16268,11 @@ def wnincd(left, right, window):
     assert window.dtype == 1
     left = ctypes.c_double(left)
     right = ctypes.c_double(right)
-    return bool(libspice.wnincd_c(_naif_context, left, right, ctypes.byref(window)))
+    return bool(libspice.wnincd_c(getNaifContext(), left, right, ctypes.byref(window)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wninsd(left, right, window):
     """
     Insert an interval into a double precision window.
@@ -15657,10 +16290,11 @@ def wninsd(left, right, window):
     assert window.dtype == 1
     left = ctypes.c_double(left)
     right = ctypes.c_double(right)
-    libspice.wninsd_c(_naif_context, left, right, ctypes.byref(window))
+    libspice.wninsd_c(getNaifContext(), left, right, ctypes.byref(window))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnintd(a, b):
     """
     Place the intersection of two double precision windows into
@@ -15681,11 +16315,12 @@ def wnintd(a, b):
     assert isinstance(b, stypes.SpiceCell)
     assert a.dtype == 1
     c = stypes.SpiceCell.double(b.size + a.size)
-    libspice.wnintd_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.wnintd_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnreld(a, op, b):
     """
     Compare two double precision windows.
@@ -15707,10 +16342,11 @@ def wnreld(a, op, b):
     assert a.dtype == 1
     assert isinstance(op, str)
     op = stypes.stringToCharP(op.encode(encoding='UTF-8'))
-    return bool(libspice.wnreld_c(_naif_context, ctypes.byref(a), op, ctypes.byref(b)))
+    return bool(libspice.wnreld_c(getNaifContext(), ctypes.byref(a), op, ctypes.byref(b)))
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnsumd(window):
     """
     Summarize the contents of a double precision window.
@@ -15733,13 +16369,14 @@ def wnsumd(window):
     stddev = ctypes.c_double()
     shortest = ctypes.c_int()
     longest = ctypes.c_int()
-    libspice.wnsumd_c(_naif_context, ctypes.byref(window), ctypes.byref(meas),
+    libspice.wnsumd_c(getNaifContext(), ctypes.byref(window), ctypes.byref(meas),
                       ctypes.byref(avg), ctypes.byref(stddev),
                       ctypes.byref(shortest), ctypes.byref(longest))
     return meas.value, avg.value, stddev.value, shortest.value, longest.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnunid(a, b):
     """
     Place the union of two double precision windows into a third window.
@@ -15758,11 +16395,12 @@ def wnunid(a, b):
     assert isinstance(b, stypes.SpiceCell)
     assert a.dtype == 1
     c = stypes.SpiceCell.double(b.size + a.size)
-    libspice.wnunid_c(_naif_context, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+    libspice.wnunid_c(getNaifContext(), ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
     return c
 
 
 @spiceErrorCheck
+@assertNaifContext
 def wnvald(insize, n, window):
     """
     Form a valid double precision window from the contents
@@ -15783,11 +16421,12 @@ def wnvald(insize, n, window):
     assert window.dtype == 1
     insize = ctypes.c_int(insize)
     n = ctypes.c_int(n)
-    libspice.wnvald_c(_naif_context, insize, n, ctypes.byref(window))
+    libspice.wnvald_c(getNaifContext(), insize, n, ctypes.byref(window))
     return window
 
 
 @spiceErrorCheck
+@assertNaifContext
 def writln(line, unit):
     """
     Internal undocumented command for writing a text line to a logical unit
@@ -15819,13 +16458,14 @@ def writln(line, unit):
     lineP    = stypes.stringToCharP(line)
     unit     = ctypes.c_int(unit)
     line_len = ctypes.c_int(len(line))
-    libspice.writln_(_naif_context, lineP, ctypes.byref(unit), line_len)
+    libspice.writln_(getNaifContext(), lineP, ctypes.byref(unit), line_len)
 
 
 ################################################################################
 # X
 
 @spiceErrorCheck
+@assertNaifContext
 def xf2eul(xform, axisa, axisb, axisc):
     """
     http://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/xf2eul_c.html
@@ -15847,11 +16487,12 @@ def xf2eul(xform, axisa, axisb, axisc):
     axisc = ctypes.c_int(axisc)
     eulang = stypes.emptyDoubleVector(6)
     unique = ctypes.c_int()
-    libspice.xf2eul_c(_naif_context, xform, axisa, axisb, axisc, eulang, unique)
+    libspice.xf2eul_c(getNaifContext(), xform, axisa, axisb, axisc, eulang, unique)
     return stypes.cVectorToPython(eulang), unique.value
 
 
 @spiceErrorCheck
+@assertNaifContext
 def xf2rav(xform):
     """
     This routine determines the rotation matrix and angular velocity
@@ -15868,11 +16509,12 @@ def xf2rav(xform):
     xform = stypes.toDoubleMatrix(xform)
     rot = stypes.emptyDoubleMatrix()
     av = stypes.emptyDoubleVector(3)
-    libspice.xf2rav_c(_naif_context, xform, rot, av)
+    libspice.xf2rav_c(getNaifContext(), xform, rot, av)
     return stypes.cMatrixToNumpy(rot), stypes.cVectorToPython(av)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def xfmsta(input_state, input_coord_sys, output_coord_sys, body):
     """
     Transform a state between coordinate systems.
@@ -15897,12 +16539,13 @@ def xfmsta(input_state, input_coord_sys, output_coord_sys, body):
     output_coord_sys = stypes.stringToCharP(output_coord_sys)
     body = stypes.stringToCharP(body)
     output_state = stypes.emptyDoubleVector(6)
-    libspice.xfmsta_c(_naif_context, input_state, input_coord_sys, output_coord_sys, body,
+    libspice.xfmsta_c(getNaifContext(), input_state, input_coord_sys, output_coord_sys, body,
                       output_state)
     return stypes.cVectorToPython(output_state)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def xpose(m):
     """
     Transpose a 3x3 matrix
@@ -15916,11 +16559,12 @@ def xpose(m):
     """
     m = stypes.toDoubleMatrix(m)
     mout = stypes.emptyDoubleMatrix(x=3, y=3)
-    libspice.xpose_c(_naif_context, m, mout)
+    libspice.xpose_c(getNaifContext(), m, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def xpose6(m):
     """
     Transpose a 6x6 matrix
@@ -15934,11 +16578,12 @@ def xpose6(m):
     """
     m = stypes.toDoubleMatrix(m)
     mout = stypes.emptyDoubleMatrix(x=6, y=6)
-    libspice.xpose6_c(_naif_context, m, mout)
+    libspice.xpose6_c(getNaifContext(), m, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def xposeg(matrix, nrow, ncol):
     """
     Transpose a matrix of arbitrary size
@@ -15959,11 +16604,12 @@ def xposeg(matrix, nrow, ncol):
     mout = stypes.emptyDoubleMatrix(x=ncol, y=nrow)
     ncol = ctypes.c_int(ncol)
     nrow = ctypes.c_int(nrow)
-    libspice.xposeg_c(_naif_context, matrix, nrow, ncol, mout)
+    libspice.xposeg_c(getNaifContext(), matrix, nrow, ncol, mout)
     return stypes.cMatrixToNumpy(mout)
 
 
 @spiceErrorCheck
+@assertNaifContext
 def zzdynrot(typid, center, et):
     """
     Find the rotation from a dynamic frame ID to the associated frame at the time requested
@@ -15982,6 +16628,5 @@ def zzdynrot(typid, center, et):
     et = ctypes.c_double(et)
     matrix = stypes.emptyDoubleMatrix(x=3, y=3)
     nextFrame = ctypes.c_int()
-    libspice.zzdynrot_(_naif_context, ctypes.byref(typid), ctypes.byref(center), ctypes.byref(et), matrix, ctypes.byref(nextFrame))
+    libspice.zzdynrot_(getNaifContext(), ctypes.byref(typid), ctypes.byref(center), ctypes.byref(et), matrix, ctypes.byref(nextFrame))
     return stypes.cMatrixToNumpy(matrix), nextFrame.value
-

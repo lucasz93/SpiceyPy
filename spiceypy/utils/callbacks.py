@@ -23,17 +23,17 @@ SOFTWARE.
 """
 
 import functools
-from ctypes import c_int, c_double, c_char_p, POINTER, CFUNCTYPE, byref
+from ctypes import c_int, c_double, c_char_p, c_void_p, POINTER, CFUNCTYPE, byref
 from .support_types import SpiceCell
 
-UDFUNS = CFUNCTYPE(None, c_double, POINTER(c_double))
-UDFUNB = CFUNCTYPE(None, UDFUNS, c_double, POINTER(c_int))
-UDSTEP = CFUNCTYPE(None, c_double, POINTER(c_double))
-UDREFN = CFUNCTYPE(None, c_double, c_double, c_int, c_int, POINTER(c_double))
-UDREPI = CFUNCTYPE(None, POINTER(SpiceCell), c_char_p, c_char_p)
-UDREPU = CFUNCTYPE(None, c_double, c_double, c_double)
-UDREPF = CFUNCTYPE(None)
-UDBAIL = CFUNCTYPE(c_int)
+UDFUNS = CFUNCTYPE(None, c_void_p, c_double, POINTER(c_double))
+UDFUNB = CFUNCTYPE(None, c_void_p, UDFUNS, c_double, POINTER(c_int))
+UDSTEP = CFUNCTYPE(None, c_void_p, c_double, POINTER(c_double))
+UDREFN = CFUNCTYPE(None, c_void_p, c_double, c_double, c_int, c_int, POINTER(c_double))
+UDREPI = CFUNCTYPE(None, c_void_p, POINTER(SpiceCell), c_char_p, c_char_p)
+UDREPU = CFUNCTYPE(None, c_void_p, c_double, c_double, c_double)    
+UDREPF = CFUNCTYPE(None, c_void_p)
+UDBAIL = CFUNCTYPE(c_int, c_void_p)
 
 def SpiceUDFUNS(f):
     """
@@ -45,7 +45,7 @@ def SpiceUDFUNS(f):
     """
 
     @functools.wraps(f)
-    def wrapping_udfuns(x, value):
+    def wrapping_udfuns(naif_context, x, value):
         result = f(x)
         value[0] = c_double(result)
 
@@ -61,7 +61,7 @@ def SpiceUDFUNB(f):
     """
 
     @functools.wraps(f)
-    def wrapping_udfunb(udf, et, xbool):
+    def wrapping_udfunb(naif_context, udf, et, xbool):
         result = f(udf, et) # the function takes a udffunc as a argument
         xbool[0] = c_int(result)
 
@@ -77,7 +77,7 @@ def SpiceUDSTEP(f):
     """
 
     @functools.wraps(f)
-    def wrapping_udstep(x, value):
+    def wrapping_udstep(naif_context, x, value):
         result = f(x)
         value[0] = c_double(result)
 
@@ -92,7 +92,7 @@ def SpiceUDREFN(f):
     :rtype: builtins.function
     """
     @functools.wraps(f)
-    def wrapping_udrefn(t1, t2, s1, s2, t):
+    def wrapping_udrefn(naif_context, t1, t2, s1, s2, t):
         result = f(t1, t2, s1, s2)
         t[0] = c_double(result)
 
@@ -107,7 +107,7 @@ def SpiceUDREPI(f):
     :rtype: builtins.function
     """
     @functools.wraps(f)
-    def wrapping_udrepi(cnfine, srcpre, srcsurf):
+    def wrapping_udrepi(naif_context, cnfine, srcpre, srcsurf):
         f(cnfine, srcpre, srcsurf)
 
     return UDREPI(wrapping_udrepi)
@@ -121,7 +121,7 @@ def SpiceUDREPU(f):
     :rtype: builtins.function
     """
     @functools.wraps(f)
-    def wrapping_udrepu(beg, end, et):
+    def wrapping_udrepu(naif_context, beg, end, et):
         f(beg, end, et)
 
     return UDREPU(wrapping_udrepu)
@@ -135,7 +135,7 @@ def SpiceUDREPF(f):
     :rtype: builtins.function
     """
     @functools.wraps(f)
-    def wrapping_udrepf():
+    def wrapping_udrepf(naif_context):
         f()
     return UDREPF(wrapping_udrepf)
 
@@ -149,7 +149,7 @@ def SpiceUDBAIL(f):
     :rtype: builtins.function
     """
     @functools.wraps(f)
-    def wrapping_udbail():
+    def wrapping_udbail(naif_context):
         result = f()
         return int(result)
     return UDBAIL(wrapping_udbail)
@@ -167,5 +167,6 @@ def CallUDFUNS(f, x):
     :rtype: float
     """
     value = c_double()
-    f(x, byref(value))
+    # MECHSOFT TODO: Pass the actual NAIF context in here. 0 will ruin someone's day...
+    f(0, x, byref(value))
     return value.value

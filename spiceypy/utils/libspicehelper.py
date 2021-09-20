@@ -46,6 +46,11 @@ c_int_p  = POINTER(c_int)
 __author__ = 'AndrewAnnex'
 
 # ######################################################################################################################
+# CONTEXT
+libspice.cspice_alloc.restype = c_void_p
+libspice.cspice_free.argtypes = [c_void_p]
+
+# ######################################################################################################################
 # A
 
 libspice.appndc_c.argtypes = [c_void_p, c_char_p, s_cell_p]
