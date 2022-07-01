@@ -104,7 +104,7 @@ def isiterable(i):
     :param i: input collection
     :return:
     """
-    return isinstance(i, collections.Iterable) and not isinstance(i, six.string_types)
+    return isinstance(i, collections.abc.Iterable) and not isinstance(i, six.string_types)
 
 
 def toPythonString(inString):
